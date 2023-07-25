@@ -1,0 +1,42 @@
+[
+  {
+    "type": "faction",
+    "id": "psi_dreamers",
+    "name": "The Dreamers",
+     "description": "A group of psions newly awakened to their powers, banded together for mutual security."
+    "likes_u": 10,
+    "respects_u": 10,
+    "trusts_u": 10,
+    "known_by_u": false,
+    "size": 6,
+    "power": 50,
+    "food_supply": 60000,
+    "lone_wolf_faction": false,
+    "wealth": 30000,
+    "currency": "FMCNote",
+    "price_rules": [ ],
+    "relations": {
+      "free_merchants": {
+        "kill on sight": false,
+        "watch your back": true,
+        "share my stuff": false,
+        "guard your stuff": false,
+        "lets you in": false,
+        "defends your space": false,
+        "knows your voice": true
+      },
+      "old_guard": {
+        "kill on sight": false,
+        "watch your back": false,
+        "share my stuff": false,
+        "guard your stuff": false,
+        "lets you in": false,
+        "defends your space": true,
+        "knows your voice": true
+      },
+      "hells_raiders": {
+        "kill on sight": true
+      }
+    }
+  }
+]
