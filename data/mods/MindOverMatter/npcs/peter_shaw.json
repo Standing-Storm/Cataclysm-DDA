@@ -33,6 +33,7 @@
       { "trait": "EAGLEEYED" },
       { "trait": "SLOWHEALER" },
       { "trait": "DISORGANIZED" },
+      { "trait": "TOUGH_FEET" },
       { "trait": "Exp_Agriculture1" },
       { "group": "Appearance_Germanic" }
     ],
@@ -44,6 +45,66 @@
       { "skill": "swimming", "bonus": { "rng": [ 3, 5 ] } },
       { "skill": "dodge", "bonus": { "rng": [ 2, 3 ] } },
       { "skill": "metaphysics", "bonus": { "rng": [ 3, 4 ] } } 
+    ],
+    "spells": [ 
+      { "id": "telekinetic_pull", "level": 7 }, 
+      { "id": "telekinetic_push", "level": 6 }, 
+      { "id": "telekinetic_momentum", "level": 5 }, 
+      { "id": "telekinetic_hammer", "level": 4 } 
     ]
   },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT",
+    "dynamic_line": {
+      "npc_has_var": "u_talked_to_refugee_psion_scout",
+      "type": "dialogue",
+      "context": "first_meeting",
+      "value": "yes",
+      "yes": [ "Good to see you again, <u_name>.", "Good to see you again.", "Still alive?  Good.  That's not a given these days." ],
+      "no": "A new face?  I don't think I've seen you around before.  I'm Peter."
+    },
+    "responses": [
+      { "text": "Pleased to meet you, Peter.  I'm <u_name>.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO", "condition": { "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } } },
+      { "text": "What are you doing here?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE", "condition": { "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } } },
+      { "text": "Hey Peter.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN", "condition": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } },
+      { "text": "Cool.  Anyway, bye.", "topic": "TALK_DONE" }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO",
+    "dynamic_line": { "You too.  What brings you here?" },
+    "responses": [
+      { "text": "Following the messages in the evacuation center.  How about you?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE", "effect": { "npc_add_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } },
+      { "text": "I was just out wandering and stumbled on this place.  You?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE", "effect": { "npc_add_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } },
+      { "text": "I was running from something and saw the fence.  I figured it couldn't be worse than whatever was behind me.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_RUN_WHY_HERE", "effect": { "npc_add_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } }
+    ]
+  },
+   {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE",
+    "dynamic_line": { "I was out on a trip when that week went down.  You know, the one where the sky broke.\"  He looks up at the roof for a moment.  \"Pretty easy to tell something was really wrong then even if you had been a shut-in for the months before that.  Before the internet went out, I checked the evacuation order and found the address of the center here.  I used to work as a delivery driver and I've been all over, so it wasn't that difficult to find my way.  The paper map I grabbed out of an abandoned rest stop helped, of course." },
+    "responses": [
+      { "text": "What were things like on your trip?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_TRIP" },
+      { "text": "Sounds rough.  Anyway.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+    ]
+  },
+     {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_RUN_WHY_HERE",
+    "dynamic_line": { "* laughs.  \"You were right.  This is one of the safest places that's still left.  That's why I'm here too.  I was out on a trip when that week went down.  You know, the one where the sky broke.\"  He looks up at the roof for a moment.  \"Pretty easy to tell something was really wrong then even if you had been a shut-in for the months before that.  Before the internet went out, I checked the evacuation order and found the address of the center here.  I used to work as a delivery driver and I've been all over, so it wasn't that difficult to find my way.  The paper map I grabbed out of an abandoned rest stop helped, of course." },
+    "responses": [
+      { "text": "What were things like on your trip?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_TRIP" },
+      { "text": "Sounds rough.  Anyway.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_TRIP",
+    "dynamic_line": { "You weren't on one of those buses, so you know.  They were bad.  I don't know if one in a thousand people alive before <the_cataclysm> is alive now.  One in ten thousand.\"  Peter lets out a heavy sigh.  \"I'm lucky that I'm an only child and my parents died years ago.  I didn't have many people to lose." },
+    "responses": [
+      
+    ]
+  }
 ]
