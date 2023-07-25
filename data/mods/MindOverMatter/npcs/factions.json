@@ -36,6 +36,15 @@
       },
       "hells_raiders": {
         "kill on sight": true
+      },
+      "wasteland_scavengers": {
+        "kill on sight": false,
+        "watch your back": false,
+        "share my stuff": false,
+        "guard your stuff": false,
+        "lets you in": false,
+        "defends your space": false,
+        "knows your voice": true
       }
     }
   }
