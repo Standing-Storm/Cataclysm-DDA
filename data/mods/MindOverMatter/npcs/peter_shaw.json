@@ -83,7 +83,18 @@
       "«Maybe this one?  They look like they can handles themselves out there.»"
     ],
     "responses": [
-       { "text": "…", "topic": "TALK_DONE" },
+       { "text": "…", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan_intro_post" },
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan_intro",
+    "dynamic_line": [
+      "* looks at you with a small smile."
+    ],
+    "responses": [
+        { "text": "Pleased to meet you, Peter.  I'm <u_name>.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO", "condition": { "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } } },
+      { "text": "What are you doing here?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE", "condition": { "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } } },
     ]
   },
   {
@@ -137,8 +148,8 @@
     "dynamic_line": [ "Well, I'm glad <the_cataclysm> has gone so well for you.  Must be a wonderful time to be alive." ],
      "responses": [
       { "text": "Sorry, it's been a long day.  You're right, it sucks out there.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_1", "opinion": { "trust": 1 } },
-      { "text": "Yeah, it's great.  I love it.  Can we talk about something else? .", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED_1", "opinion": { "trust": -1 } } },
-      { "text": "You're right, it is wonderful.  I finally feel like I can be myself.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH", "condition": { "or": [ {"u_has_trait": "PSYCHOPATH" }, {"u_has_trait": "KILLER" }, {"u_has_trait": "CANNIBAL" }] }, { "trust": -1 } }
+      { "text": "Yeah, it's great.  I love it.  A laugh a minute.  Can we talk about something else? .", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED_1", "opinion": { "trust": -1 } } },
+      { "text": "You're right, it is wonderful.  I finally feel like I can be my true self.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH", "condition": { "or": [ {"u_has_trait": "PSYCHOPATH" }, {"u_has_trait": "KILLER" }, {"u_has_trait": "CANNIBAL" }] }, { "trust": -1 } }
     ]
   }
 
