@@ -68,7 +68,22 @@
       { "text": "Pleased to meet you, Peter.  I'm <u_name>.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO", "condition": { "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } } },
       { "text": "What are you doing here?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE", "condition": { "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } } },
       { "text": "Hey Peter.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN", "condition": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" } },
-      { "text": "Cool.  Anyway, bye.", "topic": "TALK_DONE" }
+      { "text": "Cool.  Anyway, bye.", "topic": "TALK_DONE" },
+      {
+        "text": "[Telepathy] *Read <npc_name>'s mind*",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan_intro",
+        "condition": { "u_has_trait": "TELEPATH" }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan_intro",
+    "dynamic_line": [
+      "«Maybe this one?  They look like they can handles themselves out there.»"
+    ],
+    "responses": [
+       { "text": "…", "topic": "TALK_DONE" },
     ]
   },
   {
@@ -102,9 +117,29 @@
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_TRIP",
-    "dynamic_line": { "You weren't on one of those buses, so you know.  They were bad.  I don't know if one in a thousand people alive before <the_cataclysm> is alive now.  One in ten thousand.\"  Peter lets out a heavy sigh.  \"I'm lucky that I'm an only child and my parents died years ago.  I didn't have many people to lose." },
+    "dynamic_line": { "You didn't get here on one of those buses, so you know.  They were bad.  I don't know if one in a thousand people alive before <the_cataclysm> is alive now.  One in ten thousand.\"  Peter lets out a heavy sigh.  \"I'm lucky that I'm an only child and my parents died years ago.  I didn't have many people to lose.  Not like Boris, he-  Well, no, that's his story to tell." },
     "responses": [
-      
+      { "text": "Yeah, it hasn't been great surviving out there.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END" },
+      { "text": "Yeah, yeah, life sucks, whatever. Anyway.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED", "opinion": { "trust": -1 } }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END",
+    "dynamic_line": [ "Not for you, not for me, not for anyone.  Well, maybe some of those people who went crazy are having an okay time.  If they ever know what's happening.  Anyway, let's talk about something happier." ],
+    "resposes": [
+      { "text": "That sounds good.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED",
+    "dynamic_line": [ "Well, I'm glad <the_cataclysm> has gone so well for you.  Must be a wonderful time to be alive." ],
+     "responses": [
+      { "text": "Sorry, it's been a long day.  You're right, it sucks out there.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_1", "opinion": { "trust": 1 } },
+      { "text": "Yeah, it's great.  I love it.  Can we talk about something else? .", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED_1", "opinion": { "trust": -1 } } },
+      { "text": "You're right, it is wonderful.  I finally feel like I can be myself.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH", "condition": { "or": [ {"u_has_trait": "PSYCHOPATH" }, {"u_has_trait": "KILLER" }, {"u_has_trait": "CANNIBAL" }] }, { "trust": -1 } }
     ]
   }
+
 ]
