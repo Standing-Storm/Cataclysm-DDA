@@ -301,7 +301,7 @@
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_STABILIZED",
-    "dynamic_line": [ "*has a vacant look in his eyes, for just a split second. \"You're right.  I'm sorry for being so rude." ],
+    "dynamic_line": [ "&<npc_name>'s eyes go blank, for just a split second. \"You're right.  I'm sorry for being so rude." ],
     "responses": [
       {
         "text": "That's better.",
