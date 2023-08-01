@@ -4,5 +4,11 @@
     "id": "asked_to_vitakinetic_heal",
     "name": [ "Asked to heal" ],
     "desc": [ "You were asked if you wanted your illness healed and you said no." ]
+  },
+  {
+    "type": "effect_type",
+    "id": "npc_mood_unstabilized",
+    "name": "",
+    "desc": [ "Someone tried to affect your mood with telepathy.  It didn't work." ]
   }
 ]

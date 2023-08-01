@@ -1,0 +1,14 @@
+[
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+    "dynamic_line": [ "*lets out a sigh. \"Maybe.  Maybe.  Alright, what do you want?" ],
+    "responses": [
+      {
+        "text": "Thank you.  Anyway.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      }
+    ]
+  }
+]

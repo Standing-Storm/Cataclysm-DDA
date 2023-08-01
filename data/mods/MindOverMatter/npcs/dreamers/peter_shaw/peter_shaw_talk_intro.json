@@ -1,0 +1,319 @@
+[
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT",
+    "dynamic_line": {
+      "npc_has_var": "u_talked_to_refugee_psion_scout",
+      "type": "dialogue",
+      "context": "first_meeting",
+      "value": "yes",
+      "yes": [ "Good to see you again, <u_name>.", "Good to see you again.", "Still alive?  Good.  That's not a given these days." ],
+      "no": {
+        "npc_has_var": "u_talked_to_refugee_psion_scout_psychopath",
+        "type": "dialogue",
+        "context": "first_meeting",
+        "value": "yes",
+        "yes": [ "I remember you. What do you want?", "Oh.  You again." ],
+        "no": "A new face?  I don't think I've seen you around before.  I'm Peter."
+      }
+    },
+    "responses": [
+      {
+        "text": "Pleased to meet you, Peter.  I'm <u_name>.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO",
+        "condition": {
+          "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+        }
+      },
+      {
+        "text": "What are you doing here?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE",
+        "condition": {
+          "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+        }
+      },
+      {
+        "text": "Hey Peter.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+        "condition": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" },
+        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      },
+      { "text": "Cool.  Anyway, bye.", "topic": "TALK_DONE" },
+      {
+        "text": "[Telepathy] *Read <npc_name>'s mind*",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan_intro",
+        "condition": {
+          "and": [
+            { "u_has_trait": "TELEPATH" },
+            {
+              "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan_intro",
+    "dynamic_line": [ "«Maybe this one?  They look like they can handles themselves out there.»" ],
+    "responses": [ { "text": "…", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan_intro_post" } ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan_intro",
+    "dynamic_line": [ "* looks at you with a small smile." ],
+    "responses": [
+      {
+        "text": "Pleased to meet you, Peter.  I'm <u_name>.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO",
+        "condition": {
+          "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+        }
+      },
+      {
+        "text": "What are you doing here?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE",
+        "condition": {
+          "not": { "npc_has_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+        }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO",
+    "dynamic_line": [ "You too.  What brings you here?" ],
+    "responses": [
+      {
+        "text": "Following the messages in the evacuation center.  How about you?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE",
+        "effect": { "npc_add_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+      },
+      {
+        "text": "I was just out wandering and stumbled on this place.  You?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE",
+        "effect": { "npc_add_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+      },
+      {
+        "text": "I was running from something and saw the fence.  I figured it couldn't be worse than whatever was behind me.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_RUN_WHY_HERE",
+        "effect": { "npc_add_var": "u_talked_to_refugee_psion_scout", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_WHY_HERE",
+    "dynamic_line": [
+      "I was out on a trip when that week went down.  You know, the one where the sky broke.\"  He looks up at the roof for a moment.  \"Pretty easy to tell something was really wrong then even if you had been a shut-in for the months before that.  Before the internet went out, I checked the evacuation order and found the address of the center here.  I used to work as a delivery driver and I've been all over, so it wasn't that difficult to find my way.  The paper map I grabbed out of an abandoned rest stop helped, of course."
+    ],
+    "responses": [
+      { "text": "What were things like on your trip?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_TRIP" },
+      { "text": "Sounds rough.  Anyway.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_RUN_WHY_HERE",
+    "dynamic_line": [
+      "* laughs.  \"You were right.  This is one of the safest places that's still left.  That's why I'm here too.  I was out on a trip when that week went down.  You know, the one where the sky broke.\"  He looks up at the roof for a moment.  \"Pretty easy to tell something was really wrong then even if you had been a shut-in for the months before that.  Before the internet went out, I checked the evacuation order and found the address of the center here.  I used to work as a delivery driver and I've been all over, so it wasn't that difficult to find my way.  The paper map I grabbed out of an abandoned rest stop helped, of course."
+    ],
+    "responses": [
+      { "text": "What were things like on your trip?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_TRIP" },
+      { "text": "Sounds rough.  Anyway.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_TRIP",
+    "dynamic_line": [
+      "You didn't get here on one of those buses, so you know.  They were bad.  I don't know if one in a thousand people alive before <the_cataclysm> is alive now.  One in ten thousand.\"  Peter lets out a heavy sigh.  \"I'm lucky that I'm an only child and my parents died years ago.  I didn't have many people to lose.  Not like Boris, he-  Well, no, that's his story to tell."
+    ],
+    "responses": [
+      { "text": "Yeah, it hasn't been great surviving out there.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END" },
+      {
+        "text": "Yeah, yeah, life sucks, whatever. Anyway.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED",
+        "opinion": { "trust": -1 }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END",
+    "dynamic_line": [
+      "Not for you, not for me, not for anyone.  Well, maybe some of those people who went crazy are having an okay time, if they even know what's happening.  Anyway, let's talk about something happier."
+    ],
+    "responses": [ { "text": "That sounds good.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" } ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED",
+    "dynamic_line": [ "Well, I'm glad <the_cataclysm> has gone so well for you.  Must be a wonderful time to be alive." ],
+    "responses": [
+      {
+        "text": "Sorry, it's been a long day.  You're right, it sucks out there.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_1",
+        "opinion": { "trust": 1 }
+      },
+      {
+        "text": "Yeah, it's great.  I love it.  A laugh a minute.  Can we talk about something else? .",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED_1",
+        "opinion": { "trust": -1 }
+      },
+      {
+        "text": "You're right, it is wonderful.  I finally feel like I can be my true self.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH",
+        "condition": { "or": [ { "u_has_trait": "PSYCHOPATH" }, { "u_has_trait": "KILLER" }, { "u_has_trait": "CANNIBAL" } ] },
+        "opinion": { "trust": -1, "value": -1 }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_1",
+    "dynamic_line": [ "Yeah, it does.  Anyway, let's talk about something happier." ],
+    "responses": [
+      {
+        "text": "That sounds good.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_END_ANNOYED_1",
+    "dynamic_line": [ "If you insist." ],
+    "responses": [
+      {
+        "text": "Fine.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH",
+    "dynamic_line": [
+      "*blinks \"Your true self?  I don't know what you mean by that and I don't think I want to.  It was nice meeting you, but I have things to do."
+    ],
+    "responses": [
+      {
+        "text": "Fine.",
+        "topic": "TALK_DONE",
+        "effect": {
+          "npc_add_var": "u_talked_to_refugee_psion_scout_psychopath",
+          "type": "dialogue",
+          "context": "first_meeting",
+          "value": "yes"
+        }
+      },
+      {
+        "text": "Hey, come on.  We do what we have to to survive, right?",
+        "trial": { "type": "PERSUADE", "difficulty": 5, "mod": [ [ "TRUST", 4 ], [ "VALUE", 2 ], [ "ANGER", -3 ] ] },
+        "effect": {
+          "npc_add_var": "u_talked_to_refugee_psion_scout_psychopath",
+          "type": "dialogue",
+          "context": "first_meeting",
+          "value": "yes"
+        },
+        "success": { "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_OKAY" },
+        "failure": { "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_NOT_OKAY" }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_OKAY",
+    "dynamic_line": [ "*lets out a sigh. \"Maybe.  Maybe.  Alright, what do you want?" ],
+    "responses": [
+      {
+        "text": "Thank you.  Anyway.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_NOT_OKAY",
+    "dynamic_line": [ "Yeah, I don't think so.  Like I said, I have things to do." ],
+    "responses": [
+      {
+        "text": "Fine.",
+        "topic": "TALK_DONE",
+        "effect": [
+          { "npc_add_effect": "annoyed_wont_talk", "duration": "24 h" },
+          { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_NOT_OKAY_MAIN" }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_NOT_OKAY_MAIN",
+    "dynamic_line": [ "Oh, it's you. What?", "I told you, I'm busy." ],
+    "responses": [
+      {
+        "text": "Fine.",
+        "topic": "TALK_DONE",
+        "condition": { "or": [ { "npc_has_effect": "annoyed_wont_talk" }, { "npc_has_effect": "npc_mood_unstabilized" } ] }
+      },
+      {
+        "text": "I think we got off on the wrong foot.",
+        "condition": { "not": { "or": [ { "npc_has_effect": "annoyed_wont_talk" }, { "npc_has_effect": "npc_mood_unstabilized" } ] } },
+        "trial": { "type": "PERSUADE", "difficulty": 7, "mod": [ [ "TRUST", 4 ], [ "VALUE", 2 ], [ "ANGER", -3 ] ] },
+        "success": { "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_OKAY" },
+        "failure": { "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_NOT_OKAY" }
+      },
+      {
+        "text": "[Mood Stabilization Check] Come on, don't be like that.  There's no reason to be so short with me.",
+        "condition": {
+          "and": [
+            { "math": [ "u_val('spell_level', 'spell: telepathic_morale')", ">=", "1" ] },
+            { "not": { "npc_has_trait": "NPC_TELEPATHY_IMMUNE" } },
+            { "not": { "npc_has_effect": "npc_mood_unstabilized" } }
+          ]
+        },
+        "trial": {
+          "type": "CONDITION",
+          "condition": {
+            "roll_contested": { "math": [ "u_val('spell_level', 'spell: telepathic_morale')" ] },
+            "difficulty": { "math": [ "n_val('intelligence')" ] },
+            "die_size": 10
+          }
+        },
+        "success": { "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_STABILIZED", "opinion": { "trust": 2, "fear": -1 } },
+        "failure": {
+          "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_UNSTABILIZED",
+          "effect": [
+            { "npc_add_effect": "annoyed_wont_talk", "duration": "24 h" },
+            { "npc_add_effect": "npc_mood_unstabilized", "duration": "72 h" },
+            { "u_message": "Your telepathy attempt failed!", "type": "bad" }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_STABILIZED",
+    "dynamic_line": [ "*has a vacant look in his eyes, for just a split second. \"You're right.  I'm sorry for being so rude." ],
+    "responses": [
+      {
+        "text": "That's better.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_INTRO_UNSTABILIZED",
+    "dynamic_line": [ "I said I'm busy.  Good bye." ],
+    "responses": [ { "text": "Fine.", "topic": "TALK_DONE" } ]
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "type": "npc",
+    "id": "refugee_psion_telekinetic_scout",
+    "//": "Psion in the refugee center, breadcrumb to the Dreamers.",
+    "name_unique": "Peter Shaw",
+    "gender": "male",
+    "class": "NC_PSION_TELEKINETIC_SCOUT",
+    "attitude": 0,
+    "mission": 7,
+    "chat": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT",
+    "faction": "psi_dreamers",
+    "age": 29,
+    "height": 180
+  },
+  {
+    "type": "npc_class",
+    "id": "NC_PSION_TELEKINETIC_SCOUT",
+    "name": { "str": "Wanderer" },
+    "job_description": "I'm just seeing what's out there, you know?",
+    "common": false,
+    "bonus_str": { "rng": [ -2, 2 ] },
+    "bonus_dex": { "rng": [ -2, 2 ] },
+    "bonus_int": { "rng": [ 1, 2 ] },
+    "bonus_per": { "rng": [ -2, 2 ] },
+    "worn_override": "NC_PSION_TELEKINETIC_SCOUT_worn",
+    "carry_override": "NC_PSION_TELEKINETIC_SCOUT_carry",
+    "weapon_override": "EMPTY_GROUP",
+    "traits": [
+      { "trait": "TELEKINETIC_LIFTER_4" },
+      { "trait": "TELEKINETIC" },
+      { "trait": "OUTDOORSMAN" },
+      { "trait": "EAGLEEYED" },
+      { "trait": "SLOWHEALER" },
+      { "trait": "DISORGANIZED" },
+      { "trait": "TOUGH_FEET" },
+      { "trait": "Exp_Agriculture1" },
+      { "group": "Appearance_Germanic" }
+    ],
+    "skills": [
+      { "skill": "gun", "bonus": { "rng": [ 1, 3 ] } },
+      { "skill": "speech", "bonus": { "rng": [ 2, 5 ] } },
+      { "skill": "survival", "bonus": { "rng": [ 4, 6 ] } },
+      { "skill": "cooking", "bonus": { "rng": [ 2, 3 ] } },
+      { "skill": "swimming", "bonus": { "rng": [ 3, 5 ] } },
+      { "skill": "dodge", "bonus": { "rng": [ 2, 3 ] } },
+      { "skill": "metaphysics", "bonus": { "rng": [ 3, 4 ] } }
+    ],
+    "spells": [
+      { "id": "telekinetic_pull", "level": 7 },
+      { "id": "telekinetic_push", "level": 6 },
+      { "id": "telekinetic_momentum", "level": 5 },
+      { "id": "telekinetic_hammer", "level": 4 }
+    ]
+  }
+]
