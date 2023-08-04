@@ -382,9 +382,11 @@ static const trait_id trait_THRESH_MARLOSS( "THRESH_MARLOSS" );
 static const trait_id trait_THRESH_MYCUS( "THRESH_MYCUS" );
 static const trait_id trait_THRESH_PLANT( "THRESH_PLANT" );
 static const trait_id trait_TOLERANCE( "TOLERANCE" );
+static const trait_id trait_VAMPIRE( "VAMPIRE" );
 static const trait_id trait_WAYFARER( "WAYFARER" );
 
 static const vitamin_id vitamin_blood( "blood" );
+static const vitamin_id vitamin_human_blood_vitamin( "human_blood_vitamin" );
 static const vitamin_id vitamin_redcells( "redcells" );
 
 static const weather_type_id weather_portal_storm( "portal_storm" );
@@ -3085,15 +3087,30 @@ std::optional<int> iuse::trimmer_off( Character *p, item *it, bool, const tripoi
                            _( "You yank the cord, but nothing happens." ) );
 }
 
-static int toolweapon_running( Character &p, item &it, const tripoint &pos,
+static int toolweapon_running( Character *p, item &it, const tripoint &pos,
                                const bool works_underwater, const int sound_chance, const int volume,  const std::string &sound,
                                const bool double_charge_cost = false )
 {
-    if( double_charge_cost && it.ammo_sufficient( &p ) ) {
-        it.ammo_consume( 1, pos, &p );
+    if( double_charge_cost && it.ammo_sufficient( p ) ) {
+        it.ammo_consume( 1, pos, p );
     }
-    if( !works_underwater && p.is_underwater() ) {
-        p.add_msg_if_player( _( "Your %s gurgles in the water and stops." ), it.tname() );
+    bool drown = false;
+    if( !works_underwater ) {
+        if( !p ) {
+            map &here = get_map();
+            if( here.is_water_shallow_current( pos ) || here.is_divable( pos ) ) {
+                // Item is on ground on water
+                drown = true;
+            }
+        } else if( p->is_underwater() ) {
+            drown = true;
+        }
+    }
+
+    if( drown ) {
+        if( p ) {
+            p->add_msg_if_player( _( "Your %s gurgles in the water and stops." ), it.tname() );
+        }
         it.convert( *it.type->revert_to ).active = false;
     } else if( one_in( sound_chance ) ) {
         sounds::ambient_sound( pos, volume, sounds::sound_t::activity, sound );
@@ -3116,38 +3133,43 @@ std::optional<int> iuse::toolweapon_deactivate( Character *p, item *it, bool, co
 
 std::optional<int> iuse::combatsaw_on( Character *p, item *it, bool, const tripoint &pos )
 {
-    return toolweapon_running( *p, *it, pos, false, 12, 18, _( "Your combat chainsaw growls." ) );
+    return toolweapon_running( p, *it, pos, false, 12, 18, _( "Your combat chainsaw growls." ) );
 }
 
 std::optional<int> iuse::e_combatsaw_on( Character *p, item *it, bool, const tripoint &pos )
 {
-    return toolweapon_running( *p, *it, pos, false, 12, 18,
+    return toolweapon_running( p, *it, pos, false, 12, 18,
                                _( "Your electric combat chainsaw growls." ) );
 }
 
 std::optional<int> iuse::chainsaw_on( Character *p, item *it, bool, const tripoint &pos )
 {
-    return toolweapon_running( *p, *it, pos, false, 15, 12, _( "Your chainsaw rumbles." ) );
+    return toolweapon_running( p, *it, pos, false, 15, 12, _( "Your chainsaw rumbles." ) );
 }
 
 std::optional<int> iuse::elec_chainsaw_on( Character *p, item *it, bool, const tripoint &pos )
 {
-    return toolweapon_running( *p, *it, pos, false, 5, 12, _( "Your electric chainsaw rumbles." ) );
+    return toolweapon_running( p, *it, pos, false, 5, 12, _( "Your electric chainsaw rumbles." ) );
 }
 
 std::optional<int> iuse::carver_on( Character *p, item *it, bool, const tripoint &pos )
 {
-    return toolweapon_running( *p, *it, pos, true, 10, 8, _( "Your electric carver buzzes." ) );
+    return toolweapon_running( p, *it, pos, true, 10, 8, _( "Your electric carver buzzes." ) );
 }
 
 std::optional<int> iuse::trimmer_on( Character *p, item *it, bool, const tripoint &pos )
 {
-    return toolweapon_running( *p, *it, pos, true, 15, 10, _( "Your hedge trimmer rumbles." ) );
+    return toolweapon_running( p, *it, pos, true, 15, 10, _( "Your hedge trimmer rumbles." ) );
 }
 
 std::optional<int> iuse::circsaw_on( Character *p, item *it, bool, const tripoint &pos )
 {
-    return toolweapon_running( *p, *it, pos,  true, 15, 7, _( "Your circular saw buzzes." ) );
+    return toolweapon_running( p, *it, pos,  true, 15, 7, _( "Your circular saw buzzes." ) );
+}
+
+std::optional<int> iuse::e_circsaw_on( Character *p, item *it, bool, const tripoint &pos )
+{
+    return toolweapon_running( p, *it, pos,  true, 15, 7, _( "Your electric circular saw buzzes." ) );
 }
 
 std::optional<int> iuse::change_eyes( Character *p, item *, bool, const tripoint & )
@@ -3841,7 +3863,7 @@ std::optional<int> iuse::tazer( Character *p, item *it, bool, const tripoint &po
 
 std::optional<int> iuse::tazer2( Character *p, item *it, bool b, const tripoint &pos )
 {
-    if( it->ammo_remaining( p ) >= 2 ) {
+    if( it->ammo_remaining( p, true ) >= 2 ) {
         // Instead of having a ctrl+c+v of the function above, spawn a fake tazer and use it
         // Ugly, but less so than copied blocks
         item fake( "tazer", calendar::turn_zero );
@@ -4569,6 +4591,7 @@ std::optional<int> iuse::blood_draw( Character *p, item *it, bool, const tripoin
     item blood( "blood", calendar::turn );
     bool drew_blood = false;
     bool acid_blood = false;
+    bool vampire = false;
     units::temperature blood_temp = units::from_kelvin( -1.0f ); //kelvins
     for( item &map_it : get_map().i_at( point( p->posx(), p->posy() ) ) ) {
         if( map_it.is_corpse() &&
@@ -4601,6 +4624,9 @@ std::optional<int> iuse::blood_draw( Character *p, item *it, bool, const tripoin
         if( p->has_trait( trait_ACIDBLOOD ) ) {
             acid_blood = true;
         }
+        if( p->has_trait( trait_VAMPIRE ) ) {
+            vampire = true;
+        }
         // From wikipedia,
         // "To compare, this (volume of blood loss that causes death) is five to eight times
         // as much blood as people usually give in a blood donation.[2]"
@@ -4623,7 +4649,10 @@ std::optional<int> iuse::blood_draw( Character *p, item *it, bool, const tripoin
             }
             p->add_msg_if_player( m_info, _( "…but acidic blood damages the %s!" ), it->tname() );
         }
-        return 1;
+    }
+
+    if( vampire ) {
+        p->vitamin_mod( vitamin_human_blood_vitamin, -500 );
     }
 
     if( !drew_blood ) {
@@ -7594,7 +7623,7 @@ std::optional<int> iuse::multicooker( Character *p, item *it, bool t, const trip
 
     if( t ) {
         //stop action before power runs out and iuse deletes the cooker
-        if( it->ammo_remaining( p ) < charge_buffer ) {
+        if( it->ammo_remaining( p, true ) < charge_buffer ) {
             it->active = false;
             it->erase_var( "RECIPE" );
             it->convert( itype_multi_cooker );
@@ -7689,7 +7718,7 @@ std::optional<int> iuse::multicooker( Character *p, item *it, bool t, const trip
             menu.addentry( mc_stop, true, 's', _( "Stop cooking" ) );
         } else {
             if( dish_it == nullptr ) {
-                if( it->ammo_remaining( p ) < charges_to_start ) {
+                if( it->ammo_remaining( p, true ) < charges_to_start ) {
                     p->add_msg_if_player( _( "Batteries are low." ) );
                     return 0;
                 }
@@ -7825,7 +7854,7 @@ std::optional<int> iuse::multicooker( Character *p, item *it, bool t, const trip
                 const int all_charges = charges_to_start + mealtime / 1000 * units::to_watt(
                                             it->type->tool->power_draw ) / 1000;
 
-                if( it->ammo_remaining( p ) < all_charges ) {
+                if( it->ammo_remaining( p, true ) < all_charges ) {
 
                     p->add_msg_if_player( m_warning,
                                           _( "The multi-cooker needs %d charges to cook this dish." ),
