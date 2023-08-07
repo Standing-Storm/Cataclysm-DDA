@@ -2,25 +2,115 @@
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
-    "dynamic_line": [ "Good to see you again, <u_name>.", "Good to see you again.", "Still alive?  Good.  That's not a given these days." ],
+    "dynamic_line": {
+      "npc_has_var": "u_talked_to_refugee_psion_scout_psychopath",
+      "type": "dialogue",
+      "context": "first_meeting",
+      "value": "yes",
+      "no": [ "Good to see you again, <name_g>.", "Good to see you again.", "Still alive?  Good.  That's not a given these days." ],
+      "yes": [ "Oh, it's you.", "You're back?", "Still alive?  Huh." ],
+    },
     "responses": [
       {
-        "text": "Thank you.  Anyway.",
-        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+        "text": "Hi, Peter.  How've you been?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_HOW_BEEN",
         "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      },
+      {
+        "text": "So what do you think happened to the world?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD"
       }
     ]
   },
-  {
+   {
     "type": "talk_topic",
-    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN_PSYCHO",
-    "dynamic_line": [ "Oh, it's you.", "You're back?", "Still alive?  Huh." ],
-    "responses": [
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_HOW_BEEN",
+    "dynamic_line": {
+      "npc_has_var": "u_talked_to_refugee_psion_scout_psychopath",
+      "type": "dialogue",
+      "context": "first_meeting",
+      "value": "yes",
+      "no": [ "Not bad.  Just getting my bearings before I head out again." ],
+      "yes": [ "Oh, can't complain.", "Alright." ],
+    },
+      "responses": [
       {
-        "text": "Thank you.  Anyway.",
-        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
-        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+        "text": "Head out again?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_HEADiNG_OUT",
+        "condition": {
+          "not": { "npc_has_var": "u_talked_to_refugee_psion_scout_psychopath", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+        }
+      },
+         {
+        "text": "Nice.  Anyway.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN"
       }
-    ]
+      
+      ]
+   },
+  {
+     "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD",
+     "dynamic_line": "So we're doing this?  What a question.\"  Peter looks away from you for a moment before answering.  \"I think the obvious answer is some kind of government research gone wrong, right?  They start doing bioweapons research and have a containment breach and it gets loose and everyone goes crazy and turns into rage zombies.  And that'd be my answer if it weren't for the Week of Nightmares.  There wasn't some kind of giant monster government project before the end.  Even in a world of zombies and giant bugs, that's insane.  Were you near any of the cities when it all went down?",
+  },
+  "responses": [
+   {
+        "text": "Yes.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_2"
+      },
+     {
+        "text": "No.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_2_NO"
+      },
+      {
+        "text": "Can we talk about something else?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN"
+      }
+  ]
+  },
+  {
+     "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_2",
+     "dynamic_line": "Then you saw them too, I bet.  The monsters.  I knew things would be really bad when I saw that video someone posted.  You know the one, it's all anyone was talking about for a week.  But the dumb part is, I stayed home.  I kept going to work.\"  He pauses for a moment.  \"I heard a story once, from the Iraq War back in the oughts.  The army was prparing to assault some city, all lined up ready to start, and they see a guy walk out of his house on the edge of the city.  He has a briefcase in his hand and he walks to his car.  He can see the army there, tanks and everything, waiting for the signal, but what's he going to do, quit his job?  That's the way I thought too.  Anwyway, that meant I was still in the city when when the storms broke, and on my way out I stopped and looked back.  There was…something there, as tall as a skyscraper, smashing buildings like kicking over anthills.  I couldn't see it clearly; it was wavering like a mirage.  But the buildings were falling all the same.",
+     "responses": [
+          {
+        "text": "Yeah.  I remember them too.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_3"
+      },
+     {
+        "text": "That's fucked up.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_3"
+      },
+       {
+        "text": "That sounds rough.  Can we talk about something else?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN"
+      }
+     ]
+  },
+   {
+     "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_2_NO",
+     "dynamic_line": "Oh man.  Maybe you saw them on the internet, back when that existed?  The monsters.  I should have left the cities when the riots got really bad, but the dumb part is, I stayed home.  I kept going to work.\"  He pauses for a moment.  \"I heard a story once, from the Iraq War back in the oughts.  The army was prparing to assault some city, all lined up ready to start, and they see a guy walk out of his house on the edge of the city.  He has a briefcase in his hand and he walks to his car.  He can see the army there, tanks and everything, waiting for the signal, but what's he going to do, quit his job?  That's the way I thought too.  Anwyway, that meant I was still in the city when when the storms broke, and on my way out I stopped and looked back.  There was…something there, as tall as a skyscraper, smashing buildings like kicking over anthills.  I couldn't see it clearly; it was wavering like a mirage.  But the buildings were falling all the same.",
+     "responses": [
+        {
+        "text": "That's fucked up.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_3"
+      },
+       {
+        "text": "That sounds rough.  Can we talk about something else?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN"
+      }
+     ]
+  },
+  {
+     "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_3",
+    "dynamic_line": "It was awful.  At least with the zombies or the bugs you can shoot them.  Those things, I don't fucking know.  Would even nukes have worked?  So to answer your question, I don't know.  I thought it was a bioweapon gone wrong until I saw the monsters."
+     "responses": [
+        {
+        "text": "Fair enough.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN"
+      }
+     ]
   }
 ]
