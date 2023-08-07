@@ -2,7 +2,19 @@
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
-    "dynamic_line": [ "*lets out a sigh. \"Maybe.  Maybe.  Alright, what do you want?" ],
+    "dynamic_line": [ "Good to see you again, <u_name>.", "Good to see you again.", "Still alive?  Good.  That's not a given these days." ],
+    "responses": [
+      {
+        "text": "Thank you.  Anyway.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
+        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      }
+    ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN_PSYCHO",
+    "dynamic_line": [ "Oh, it's you.", "You're back?", "Still alive?  Huh." ],
     "responses": [
       {
         "text": "Thank you.  Anyway.",

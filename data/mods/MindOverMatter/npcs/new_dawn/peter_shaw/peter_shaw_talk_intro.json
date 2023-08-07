@@ -255,7 +255,7 @@
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_PSYCHOPATH_NOT_OKAY_MAIN",
-    "dynamic_line": [ "Oh, it's you. What?", "I told you, I'm busy." ],
+    "dynamic_line": [ "Oh, it's you.  I have things to do.", "I told you, I'm busy." ],
     "responses": [
       {
         "text": "Fine.",
