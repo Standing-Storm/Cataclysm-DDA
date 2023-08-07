@@ -306,7 +306,12 @@
       {
         "text": "That's better.",
         "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN",
-        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+        "effect": [ {
+          "npc_lose_var": "u_talked_to_refugee_psion_scout_psychopath",
+          "type": "dialogue",
+          "context": "first_meeting"
+        },
+          { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }] 
       }
     ]
   },
