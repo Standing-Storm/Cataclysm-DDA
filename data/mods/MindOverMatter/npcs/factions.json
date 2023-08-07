@@ -1,9 +1,10 @@
 [
   {
     "type": "faction",
-    "id": "psi_dreamers",
+    "id": "psi_new_dawn",
     "name": "The Dreamers",
-     "description": "A group of psions newly awakened to their powers, banded together for mutual security."
+    "description": "A group of psions newly awakened to their powers, banded together for mutual security.",
+    "//": "Name comes from PHAVIAN's project GREY DAWN, which was designed to produce telepaths for interrogation and espionage purposes. Only one of the members knows the real reason for the name.",
     "likes_u": 10,
     "respects_u": 10,
     "trusts_u": 10,
@@ -14,7 +15,7 @@
     "lone_wolf_faction": false,
     "wealth": 30000,
     "currency": "FMCNote",
-    "price_rules": [ ],
+    "price_rules": [  ],
     "relations": {
       "free_merchants": {
         "kill on sight": false,
@@ -34,9 +35,7 @@
         "defends your space": true,
         "knows your voice": true
       },
-      "hells_raiders": {
-        "kill on sight": true
-      },
+      "hells_raiders": { "kill on sight": true },
       "wasteland_scavengers": {
         "kill on sight": false,
         "watch your back": false,

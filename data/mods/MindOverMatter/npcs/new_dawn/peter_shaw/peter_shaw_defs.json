@@ -2,14 +2,14 @@
   {
     "type": "npc",
     "id": "refugee_psion_telekinetic_scout",
-    "//": "Psion in the refugee center, breadcrumb to the Dreamers.",
+    "//": "Psion in the refugee center, breadcrumb to the New Dawn.",
     "name_unique": "Peter Shaw",
     "gender": "male",
     "class": "NC_PSION_TELEKINETIC_SCOUT",
     "attitude": 0,
     "mission": 7,
     "chat": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT",
-    "faction": "psi_dreamers",
+    "faction": "psi_new_dawn",
     "age": 29,
     "height": 180
   },
