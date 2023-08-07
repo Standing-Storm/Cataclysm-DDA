@@ -23,7 +23,7 @@
         "share my stuff": false,
         "guard your stuff": false,
         "lets you in": false,
-        "defends your space": false,
+        "defends your space": true,
         "knows your voice": true
       },
       "old_guard": {
