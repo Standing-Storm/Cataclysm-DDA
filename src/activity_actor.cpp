@@ -3218,7 +3218,7 @@ bool craft_activity_actor::check_if_craft_okay( item_location &craft_item, Chara
     item *craft = craft_item.get_item();
 
     // item_location::get_item() will return nullptr if the item is lost
-    if( !craft ) {
+    if( !craft || square_dist( craft_item.pos_bub(), crafter.pos_bub() ) > 1 ) {
         crafter.add_msg_player_or_npc(
             _( "You no longer have the in progress craft in your possession.  "
                "You stop crafting.  "
@@ -3248,6 +3248,8 @@ void craft_activity_actor::start( player_activity &act, Character &crafter )
     cached_crafting_speed = 0;
     cached_workbench_multiplier = 0;
     use_cached_workbench_multiplier = false;
+    act.targets.clear();
+    act.targets.push_back( craft_item );
 }
 
 void craft_activity_actor::do_turn( player_activity &act, Character &crafter )
@@ -6098,7 +6100,8 @@ void firstaid_activity_actor::finish( player_activity &act, Character &who )
     if( used_tool->has_flag( flag_SINGLE_USE ) ) {
         it.remove_item();
     } else if( used_tool->is_medication() ) {
-        if( it->use_charges( it->typeId(), charges_consumed, used, it.position() ) ) {
+        if( !it->count_by_charges() ||
+            it->use_charges( it->typeId(), charges_consumed, used, it.position() ) ) {
             it.remove_item();
         }
     } else if( used_tool->is_tool() ) {
