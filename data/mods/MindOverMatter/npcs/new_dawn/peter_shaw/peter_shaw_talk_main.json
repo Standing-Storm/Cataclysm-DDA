@@ -33,7 +33,7 @@
     "responses": [
       {
         "text": "Head out again?",
-        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_HEADiNG_OUT",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_HEADING_OUT",
         "condition": {
           "not": {
             "npc_has_var": "u_talked_to_refugee_psion_scout_psychopath",
@@ -46,6 +46,27 @@
       { "text": "Nice.  Anyway.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
     ]
   },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_HEADING_OUT",
+    "dynamic_line": "Yeah, I don't live here.  I split my time between here, dropping off supplies that they need, getting more news, and my friends' and my holdout.  There's another guy--John, I think his name is--who drops by sometimes too.  Maybe you've seen him.",
+     "responses": [
+      {
+        "text": "Can I join you?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_HEADING_OUT_ASK" },
+         {"text": "Nice.  Anyway.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+     ]
+  },
+   {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_HEADING_OUT_ASK",
+    "dynamic_line": "*looks at you for a moment without speaking.  \"No offense, but no.  You're obviously good at surviving, and it's not that I don't think we could use you.  But you can't be too careful nowadays.  You understand.",
+     ",
+     "responses": [
+      {
+        {"text": "Fair enough.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      }
+     ]
+   },
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD",
