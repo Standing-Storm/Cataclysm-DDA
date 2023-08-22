@@ -7,16 +7,21 @@
       "type": "dialogue",
       "context": "first_meeting",
       "value": "yes",
-      "no": [ "Good to see you again, <name_g>.", "Good to see you again.", "Still alive?  Good.  That's not a given these days." ],
+      "no": [ "Good to see you again, <u_name>.", "Good to see you again.", "Still alive?  Good.  That's not a given these days." ],
       "yes": [ "Oh, it's you.", "You're back?", "Still alive?  Huh." ]
     },
     "responses": [
       {
         "text": "Hi, Peter.  How've you been?",
-        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_HOW_BEEN",
-        "effect": { "npc_first_topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_HOW_BEEN"
       },
-      { "text": "So what do you think happened to the world?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD" }
+      { "text": "What's your story?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND" }
+      { "text": "So what do you think happened to the world?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD" },
+      {
+        "text": "[Telepathy] *Read <npc_name>'s mind*",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_scan",
+        "condition": { "u_has_trait": "TELEPATH" }
+      }
     ]
   },
   {
@@ -43,7 +48,7 @@
           }
         }
       },
-      { "text": "Nice.  Anyway.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+      { "text": "Nice.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
     ]
   },
   {
@@ -60,13 +65,25 @@
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_HEADING_OUT_ASK",
     "dynamic_line": "*looks at you for a moment without speaking.  \"No offense, but no.  You're obviously good at surviving, and it's not that I don't think we could use you.  But you can't be too careful nowadays.  You understand.",
-     ",
      "responses": [
       {
-        {"text": "Fair enough.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+        "text": "Fair enough.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" },
+       {
+        "text": "[Telepathy 7+] *Dip into <npc_name>'s mind*.",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_HEADING_OUT_ASK_deep_scan",
+        "condition": { "math": [ "u_val('spell_level', 'school: TELEPATH')", ">=", "7" ] }
       }
      ]
    },
+   {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_HEADING_OUT_ASK_deep_scan",
+     "dynamic_line": "&You just take a quick peek into <npc_name>'s mind, looking for anything related to this holdout.  You see a few images and scraps: an isolated farm in the woods, an elderly man cooking some meat over an open flame, a younger man trying to install a solar panel on a barn roof, a woman with the brightest green eyes you've ever seen looking into a bowl of water.  It looks peaceful, but you have no idea where it is.",
+     "responses": [
+      {
+        "text": "…", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN", "effect": { "npc_add_var": "u_scanned_peter_shaw_saw_farm", "type": "dialogue", "context": "deep_scan", "value": "yes" } }
+       
+]},
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD",
@@ -80,7 +97,7 @@
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_2",
-    "dynamic_line": "Then you saw them too, I bet.  The monsters.  I knew things would be really bad when I saw that video someone posted.  You know the one, it's all anyone was talking about for a week.  But the dumb part is, I stayed home.  I kept going to work.\"  He pauses for a moment.  \"I heard a story once, from the Iraq War back in the oughts.  The army was prparing to assault some city, all lined up ready to start, and they see a guy walk out of his house on the edge of the city.  He has a briefcase in his hand and he walks to his car.  He can see the army there, tanks and everything, waiting for the signal, but what's he going to do, quit his job?  That's the way I thought too.  Anwyway, that meant I was still in the city when when the storms broke, and on my way out I stopped and looked back.  There was…something there, as tall as a skyscraper, smashing buildings like kicking over anthills.  I couldn't see it clearly; it was wavering like a mirage.  But the buildings were falling all the same.",
+    "dynamic_line": "Then you saw them too, I bet.  The monsters.  I knew things would be really bad when I saw that video someone posted.  You know the one, it's all anyone was talking about for a week.  But the dumb part is, I stayed home.  I kept going to work.\"  He pauses for a moment.  \"I heard a story once, from the Iraq War back in the oughts.  The army was prparing to assault some city, all lined up ready to start, and they see a guy walk out of his house on the edge of the city.  He has a briefcase in his hand and he walks to his car.  He can see the army there, tanks and everything, waiting for the signal, but what's he going to do, quit his job?  That's the way I thought too.  Anwyway, that meant I was still near the city when the storms broke, though I was planning a trip so I had all my stuff ready to go, and on my way out I stopped and looked back.  There was…something there, as tall as a skyscraper, smashing buildings like kicking over anthills.  I couldn't see it clearly; it was wavering, almost like a mirage.  But the buildings were falling all the same.",
     "responses": [
       { "text": "Yeah.  I remember them too.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_3" },
       { "text": "That's fucked up.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_3" },
@@ -93,7 +110,7 @@
   {
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_2_NO",
-    "dynamic_line": "Oh man.  Maybe you saw them on the internet, back when that existed?  The monsters.  I should have left the cities when the riots got really bad, but the dumb part is, I stayed home.  I kept going to work.\"  He pauses for a moment.  \"I heard a story once, from the Iraq War back in the oughts.  The army was prparing to assault some city, all lined up ready to start, and they see a guy walk out of his house on the edge of the city.  He has a briefcase in his hand and he walks to his car.  He can see the army there, tanks and everything, waiting for the signal, but what's he going to do, quit his job?  That's the way I thought too.  Anwyway, that meant I was still in the city when when the storms broke, and on my way out I stopped and looked back.  There was…something there, as tall as a skyscraper, smashing buildings like kicking over anthills.  I couldn't see it clearly; it was wavering like a mirage.  But the buildings were falling all the same.",
+    "dynamic_line": "Oh man.  Maybe you saw them on the internet, back when that existed?  The monsters.  I should have left the cities when the riots got really bad, but the dumb part is, I stayed home.  I kept going to work.\"  He pauses for a moment.  \"I heard a story once, from the Iraq War back in the oughts.  The army was prparing to assault some city, all lined up ready to start, and they see a guy walk out of his house on the edge of the city.  He has a briefcase in his hand and he walks to his car.  He can see the army there, tanks and everything, waiting for the signal, but what's he going to do, quit his job?  That's the way I thought too.  Anwyway, that meant I was still near the city when the storms broke, though I was planning a trip so I had all my stuff ready to go, and on my way out I stopped and looked back.  There was…something there, as tall as a skyscraper, smashing buildings like kicking over anthills.  I couldn't see it clearly; it was wavering like a mirage.  But the buildings were falling all the same.",
     "responses": [
       { "text": "That's fucked up.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_3" },
       {
@@ -106,6 +123,61 @@
     "type": "talk_topic",
     "id": "TALK_REFUGEE_PSION_TELEKINETIC_WHAT_WORLD_3",
     "dynamic_line": "It was awful.  At least with the zombies or the bugs you can shoot them.  Those things, I don't fucking know.  Would even nukes have worked?  So to answer your question, I don't know.  I thought it was a bioweapon gone wrong until I saw the monsters.",
+    "responses": [ { "text": "Fair enough.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" } ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND",
+    "dynamic_line": {
+      "npc_has_var": "u_talked_to_refugee_psion_scout_psychopath",
+      "type": "dialogue",
+      "context": "first_meeting",
+      "value": "yes",
+      "no": [ "I might have mentioned, I lived in Manchester before it all went down.  Big enough for city life, small enough that the riots didn't really affect me that much.  I was a delivery driver, which wasn't glamorous but it paid.  Back that February or March, things started getting even easier since most people didn't want to answer the door and they were conditioned to tip thanks to all the tablet flipping at stores.  Then that video came out of that mom and, well, it was obvious something was seriously wrong. I started prepping to get out of the city, go away somewhere, and when the sky broke I ran for it.  Took back roads, holed up at an abandoned rest stop for a couple days, and kept going." ],
+      "yes": [ "Oh, you know.  The world ended, I lived, in the chaos I made it here.  The same story as so many others." ]
+    },
+"responses": [
+     {
+        "text": "What was the trip like?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND_TRIP",
+        "condition": {
+          "not": { "npc_has_var": "u_talked_to_refugee_psion_scout_psychopath", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+        },
+        {
+        "text": "That's it?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND_PSYCHO",
+        "condition": { "npc_has_var": "u_talked_to_refugee_psion_scout_psychopath", "type": "dialogue", "context": "first_meeting", "value": "yes" }
+     },
+  { "text": "Sounds rough.  Can we talk about something else?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" }
+]
+  },
+   {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND_TRIP",
+    "dynamic_line": "It wasn't great.  At first I thought I was in a good position.  I had a car full of gas with extra cans, I had plenty of camping gear and food, I even had a weapon.  Fat lot of good it did me.  Things went great at first--I didn't see any major roadblocks or impassable wrecks and I made pretty goodt time. I was driving at night on 128, trying to avoid the main roads, when I see two eyes reflecting the light.  I slam the brakes, figuring I'm about to hit a deer, and then the deer fucking charges me.  It gets right up on my windshield and starts smashing it, trying to get in, and this close I can see the cuts on its body and that black goo leaking from it and I know the car's fucked either way, so I gun it and swerve.",
+    "responses": [ { "text": "What happened then?", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND_TRIP_2" },  {
+        "text": "That sounds rough.  Can we talk about something else?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN"
+      } ]
+  },
+  {
+   "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND_TRIP_2",
+    "dynamic_line": "I had just enough power to flip it over the car and onto the road behind me.  It's already standing up and charging, I can see it in the rearview mirror, but the car was fast.  I left it behind and kept driving, but that was my second taste of how bad things would get after seeing that giant monster destroying Manchester.  Then I learn that it's not just humans, it's deer, moose, horses, cows, probably elephants and giraffes too.  Anything that dies doesn't stay dead.  I haven't seen any zombie dogs out there. Maybe they all got eaten by the giant insects.",
+   "responses": [ { "text": "…", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND_TRIP_3" }, { "text": "That sounds rough.  Can we talk about something else?",
+        "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN"
+      } ]
+  },
+  {
+   "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND_TRIP_3",
+    "dynamic_line": "Anyone, I kept going until one night I made the stupid mistake of leaving the car window cracked and food in the care while I holed up in an abandoned house.  I woke up to crashing and banging from outside.  After the deer thing, I didn't go check on it, I figured it was a zombie bear or a beetle the size of a school bus or something.  I just held my gun, kept the windows closed, and waited until morning.  Came out after it got light to find the car nearly ripped in half.  Walking was harder and I ran into more trouble, but I eventually found some other good people who survived, and then I ended up here.",
+   "responses": [ { "text": "…", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" } ]
+  },
+  {
+    "type": "talk_topic",
+    "id": "TALK_REFUGEE_PSION_TELEKINETIC_BACKGROUND_PSYCHO",
+    "dynamic_line": "Yeah.  I don't really want to talk about it.  You've been out there, you can probably guess why.",
     "responses": [ { "text": "Fair enough.", "topic": "TALK_REFUGEE_PSION_TELEKINETIC_SCOUT_MAIN" } ]
   }
 ]
