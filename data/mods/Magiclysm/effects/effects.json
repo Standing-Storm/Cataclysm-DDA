@@ -874,5 +874,13 @@
     "remove_message": "You perfect sense of time fades away.",
     "max_duration": "24 hours",
     "flags": [ "WATCH" ]
+  },
+  {
+    "type": "effect_type",
+    "id": "effect_teleport_anchor",
+    "name": [ "Teleport Anchor" ],
+    "desc": [ "You cannot travel except through mundane means." ],
+    "rating": "bad",
+    "flags": [ "DIMENSIONAL_ANCHOR" ]
   }
 ]
