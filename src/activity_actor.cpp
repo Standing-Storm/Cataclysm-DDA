@@ -167,6 +167,8 @@ static const efftype_id effect_worked_on( "worked_on" );
 
 static const faction_id faction_your_followers( "your_followers" );
 
+static const flag_id json_flag_ALWAYS_AIMED( "ALWAYS_AIMED" );
+
 static const furn_str_id furn_f_gunsafe_mj( "f_gunsafe_mj" );
 static const furn_str_id furn_f_safe_o( "f_safe_o" );
 
@@ -231,8 +233,8 @@ static const vproto_id vehicle_prototype_none( "none" );
 
 static const zone_type_id zone_type_LOOT_IGNORE( "LOOT_IGNORE" );
 static const zone_type_id zone_type_LOOT_IGNORE_FAVORITES( "LOOT_IGNORE_FAVORITES" );
-static const zone_type_id zone_type_zone_strip( "zone_strip" );
-static const zone_type_id zone_type_zone_unload_all( "zone_unload_all" );
+static const zone_type_id zone_type_STRIP_CORPSES( "STRIP_CORPSES" );
+static const zone_type_id zone_type_UNLOAD_ALL( "UNLOAD_ALL" );
 
 std::string activity_actor::get_progress_message( const player_activity &act ) const
 {
@@ -299,6 +301,10 @@ void aim_activity_actor::do_turn( player_activity &act, Character &who )
             act.moves_left = 0;
             return;
         }
+    }
+
+    if( gun->has_flag( json_flag_ALWAYS_AIMED ) ) {
+        you.recoil = 0;
     }
 
     g->temp_exit_fullscreen();
@@ -2080,6 +2086,9 @@ void move_items_activity_actor::do_turn( player_activity &act, Character &who )
 
         // Check that we can pick it up.
         if( target->made_of_from_type( phase_id::SOLID ) ) {
+            // Spill out any invalid contents first
+            target.overflow();
+
             item &leftovers = *target;
             // Make a copy to be put in the destination location
             item newit = leftovers;
@@ -2773,8 +2782,7 @@ void consume_activity_actor::start( player_activity &act, Character &guy )
     int moves = 0;
     Character &player_character = get_player_character();
     if( consume_location ) {
-        ret_val<edible_rating> ret = ret_val<edible_rating>::make_success();
-        ret = player_character.will_eat( *consume_location, true );
+        ret_val<edible_rating> ret = player_character.will_eat( *consume_location, true );
         if( !ret.success() ) {
             canceled = true;
             consume_menu_selections = std::vector<int>();
@@ -2784,8 +2792,7 @@ void consume_activity_actor::start( player_activity &act, Character &guy )
             moves = to_moves<int>( guy.get_consume_time( *consume_location ) );
         }
     } else if( !consume_item.is_null() ) {
-        ret_val<edible_rating> ret = ret_val<edible_rating>::make_success();
-        ret = player_character.will_eat( consume_item, true );
+        ret_val<edible_rating> ret = player_character.will_eat( consume_item, true );
         if( !ret.success() ) {
             canceled = true;
             consume_menu_selections = std::vector<int>();
@@ -3027,7 +3034,7 @@ void safecracking_activity_actor::do_turn( player_activity &act, Character &who 
 {
     bool can_crack = who.has_flag( json_flag_SUPER_HEARING );
     // short-circuit to avoid the more expensive iteration over items
-    can_crack = can_crack || who.has_item_with_flag( flag_SAFECRACK );
+    can_crack = can_crack || who.cache_has_item_with( flag_SAFECRACK );
 
     if( !can_crack ) {
         // We lost our cracking tool somehow, bail out.
@@ -3779,7 +3786,6 @@ void drop_or_stash_item_info::deserialize( const JsonObject &jsobj )
 void drop_activity_actor::do_turn( player_activity &, Character &who )
 {
     const tripoint_bub_ms pos = placement + who.pos_bub();
-    who.invalidate_weight_carried_cache();
     put_into_vehicle_or_drop( who, item_drop_reason::deliberate,
                               obtain_activity_items( items, handler, who ),
                               pos, force_ground );
@@ -4151,60 +4157,96 @@ void insert_item_activity_actor::start( player_activity &act, Character &who )
     act.moves_total = total_moves;
 }
 
+static ret_val<void> try_insert( item_location &holster, drop_location &holstered_item,
+                                 int *charges_added )
+{
+    item &it = *holstered_item.first;
+    ret_val<void> ret = ret_val<void>::make_failure( _( "item can't be stored there" ) );
+
+    if( charges_added == nullptr ) {
+        if( it.is_bucket_nonempty() ) {
+            debugmsg( "ACT_INSERT_ITEM tried to stash a spillable container without spilling its contents first" );
+            return ret_val<void>::make_failure( _( "item would spill" ) );
+        }
+        ret = holster->can_contain_directly( it );
+        if( !ret.success() ) {
+            return ret;
+        }
+        ret = holster.parents_can_contain_recursive( &it );
+        if( !ret.success() ) {
+            return ret;
+        }
+
+        return holster->put_in( it, item_pocket::pocket_type::CONTAINER, /*unseal_pockets=*/true );
+    }
+
+    ret = holster->can_contain_partial_directly( it );
+    if( !ret.success() ) {
+        return ret;
+    }
+    ret_val<int> max_parent_charges = holster.max_charges_by_parent_recursive( it );
+    if( !max_parent_charges.success() ) {
+        return ret_val<void>::make_failure( max_parent_charges.str() );
+    }
+    int charges_to_insert = std::min( holstered_item.second, max_parent_charges.value() );
+    *charges_added = holster->fill_with( it, charges_to_insert, /*unseal_pockets=*/true,
+                                         /*allow_sealed=*/true, /*ignore_settings*/true, /*into_bottom*/true );
+    if( *charges_added <= 0 ) {
+        return ret_val<void>::make_failure( _( "item can't be stored there" ) );
+    }
+
+    return ret;
+}
+
 void insert_item_activity_actor::finish( player_activity &act, Character &who )
 {
     bool success = false;
     drop_location &holstered_item = items.front();
     if( holstered_item.first ) {
+        success = true;
         item &it = *holstered_item.first;
+        ret_val<void> ret = ret_val<void>::make_failure( _( "item can't be stored there" ) );
+
         if( !it.count_by_charges() ) {
-            if( holster->can_contain_directly( it ).success() &&
-                holster.parents_can_contain_recursive( &it ) ) {
+            ret = try_insert( holster, holstered_item, nullptr );
 
-                success = holster->put_in( it, item_pocket::pocket_type::CONTAINER,
-                                           /*unseal_pockets=*/true ).success();
-                if( success ) {
-                    //~ %1$s: item to put in the container, %2$s: container to put item in
-                    who.add_msg_if_player( string_format( _( "You put your %1$s into the %2$s." ),
-                                                          holstered_item.first->display_name(), holster->type->nname( 1 ) ) );
-                    handler.add_unsealed( holster );
-                    handler.unseal_pocket_containing( holstered_item.first );
-                    holstered_item.first.remove_item();
-                }
-
+            if( ret.success() ) {
+                //~ %1$s: item to put in the container, %2$s: container to put item in
+                who.add_msg_if_player( string_format( _( "You put your %1$s into the %2$s." ),
+                                                      holstered_item.first->display_name(), holster->type->nname( 1 ) ) );
+                handler.add_unsealed( holster );
+                handler.unseal_pocket_containing( holstered_item.first );
+                holstered_item.first.remove_item();
             }
         } else {
-            int charges = std::min( holstered_item.second, holster.max_charges_by_parent_recursive( it ) );
+            int charges_added = 0;
+            ret = try_insert( holster, holstered_item, &charges_added );
 
-            if( charges > 0 && holster->can_contain_partial_directly( it ) ) {
-                int result = holster->fill_with( it, charges,
-                                                 /*unseal_pockets=*/true,
-                                                 /*allow_sealed=*/true,
-                                                 /*ignore_settings*/true,
-                                                 /*into_bottom*/true );
-                success = result > 0;
-
-                if( success ) {
-                    item copy( it );
-                    copy.charges = result;
-                    //~ %1$s: item to put in the container, %2$s: container to put item in
-                    who.add_msg_if_player( string_format( _( "You put your %1$s into the %2$s." ),
-                                                          copy.display_name(), holster->type->nname( 1 ) ) );
-                    handler.add_unsealed( holster );
-                    handler.unseal_pocket_containing( holstered_item.first );
-                    it.charges -= result;
-                    if( it.charges == 0 ) {
-                        holstered_item.first.remove_item();
-                    }
+            if( ret.success() ) {
+                item copy( it );
+                copy.charges = charges_added;
+                //~ %1$s: item to put in the container, %2$s: container to put item in
+                who.add_msg_if_player( string_format( _( "You put your %1$s into the %2$s." ),
+                                                      copy.display_name(), holster->type->nname( 1 ) ) );
+                handler.add_unsealed( holster );
+                handler.unseal_pocket_containing( holstered_item.first );
+                it.charges -= charges_added;
+                if( it.charges == 0 ) {
+                    holstered_item.first.remove_item();
                 }
             }
         }
 
-        if( !success ) {
-            who.add_msg_if_player(
-                string_format(
-                    _( "Could not put %1$s into %2$s, aborting." ),
-                    it.tname(), holster->tname() ) );
+        if( !ret.success() ) {
+            success = false;
+            std::string error = !ret.str().empty() ?
+                                //~ %1$s: item we failed to put in the container, %2$s: container to put item in
+                                string_format( _( "Could not put %1$s into %2$s." ),
+                                               it.tname(), holster->tname() ) :
+                                //~ %1$s: item we failed to put in the container, %2$s: container to put item in, %3$s: reason it failed
+                                string_format( _( "Could not put %1$s into %2$s, %3$s." ),
+                                               it.tname(), holster->tname(), ret.str() );
+            who.add_msg_if_player( error );
         }
     } else {
         // item was lost, so just go to next item
@@ -6574,13 +6616,13 @@ void unload_loot_activity_actor::do_turn( player_activity &act, Character &you )
         // TODO: fix point types
         coord_set.clear();
         for( const tripoint_abs_ms &p :
-             mgr.get_near( zone_type_zone_unload_all, abspos, ACTIVITY_SEARCH_DISTANCE, nullptr,
+             mgr.get_near( zone_type_UNLOAD_ALL, abspos, ACTIVITY_SEARCH_DISTANCE, nullptr,
                            fac_id ) ) {
             coord_set.insert( p.raw() );
         }
 
         for( const tripoint_abs_ms &p :
-             mgr.get_near( zone_type_zone_strip, abspos, ACTIVITY_SEARCH_DISTANCE, nullptr,
+             mgr.get_near( zone_type_STRIP_CORPSES, abspos, ACTIVITY_SEARCH_DISTANCE, nullptr,
                            fac_id ) ) {
             coord_set.insert( p.raw() );
         }
@@ -6724,8 +6766,10 @@ void unload_loot_activity_actor::do_turn( player_activity &act, Character &you )
 
         bool unload_mods = false;
         bool unload_molle = false;
+        bool unload_sparse_only = false;
+        int unload_sparse_threshold = 20;
 
-        std::vector<zone_data const *> const zones = mgr.get_zones_at( src, zone_type_zone_unload_all,
+        std::vector<zone_data const *> const zones = mgr.get_zones_at( src, zone_type_UNLOAD_ALL,
                 fac_id );
 
         // get most open rules out of all stacked zones
@@ -6733,6 +6777,8 @@ void unload_loot_activity_actor::do_turn( player_activity &act, Character &you )
             unload_options const &options = dynamic_cast<const unload_options &>( zone->get_options() );
             unload_molle |= options.unload_molle();
             unload_mods |= options.unload_mods();
+            unload_sparse_only |= options.unload_sparse_only();
+            unload_sparse_threshold |= options.unload_sparse_threshold();
         }
 
         //Skip items that have already been processed
@@ -6759,13 +6805,25 @@ void unload_loot_activity_actor::do_turn( player_activity &act, Character &you )
             // if this item isn't going anywhere and its not sealed
             // check if it is in a unload zone or a strip corpse zone
             // then we should unload it and see what is inside
-            if( mgr.has_near( zone_type_zone_unload_all, abspos, 1, fac_id ) ||
-                ( mgr.has_near( zone_type_zone_strip, abspos, 1, fac_id ) && it->first->is_corpse() ) ) {
+            if( mgr.has_near( zone_type_UNLOAD_ALL, abspos, 1, fac_id ) ||
+                ( mgr.has_near( zone_type_STRIP_CORPSES, abspos, 1, fac_id ) && it->first->is_corpse() ) ) {
                 if( you.rate_action_unload( *it->first ) == hint_rating::good &&
                     !it->first->any_pockets_sealed() ) {
+                    std::unordered_map<itype_id, int> item_counts;
+                    if( unload_sparse_only ) {
+                        for( item *contained : it->first->all_items_top( item_pocket::pocket_type::CONTAINER ) ) {
+                            if( !contained->made_of( phase_id::LIQUID ) && !contained->made_of( phase_id::GAS ) ) {
+                                item_counts[contained->typeId()]++;
+                            }
+                        }
+                    }
                     for( item *contained : it->first->all_items_top( item_pocket::pocket_type::CONTAINER ) ) {
                         // no liquids don't want to spill stuff
                         if( !contained->made_of( phase_id::LIQUID ) && !contained->made_of( phase_id::GAS ) ) {
+                            if( unload_sparse_only &&
+                                item_counts[contained->typeId()] > unload_sparse_threshold ) {
+                                continue;
+                            }
                             move_item( you, *contained, contained->count(), src_loc, src_loc, this_veh, this_part );
                             it->first->remove_item( *contained );
                         }

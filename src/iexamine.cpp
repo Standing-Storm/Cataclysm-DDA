@@ -722,7 +722,7 @@ class atm_menu
                           _( "You need a charged cash card before you can deposit money!" ) );
             }
 
-            if( card_count >= 1 && you.has_item_with_flag( flag_OLD_CURRENCY ) ) {
+            if( card_count >= 1 && you.cache_has_item_with( flag_OLD_CURRENCY ) ) {
                 add_choice( exchange_cash, _( "Exchange Cash for eCash (1%% fee)" ) );
             }
 
@@ -805,9 +805,8 @@ class atm_menu
         //!Move money from bank account onto cash card.
         bool do_withdraw_money() {
 
-            std::vector<item *> cash_cards_on_hand = you.items_with( []( const item & i ) {
-                return i.typeId() == itype_cash_card;
-            } );
+            std::vector<item *> cash_cards_on_hand = you.cache_get_items_with( "is_cash_card",
+                    &item::is_cash_card );
             if( cash_cards_on_hand.empty() ) {
                 //Just in case we run into an edge case
                 popup( _( "You do not have a cash card to withdraw money!" ) );
@@ -866,9 +865,8 @@ class atm_menu
                     return false;
                 }
             } else {
-                const std::vector<item *> cash_cards = you.items_with( []( const item & i ) {
-                    return i.typeId() == itype_cash_card;
-                } );
+                const std::vector<item *> cash_cards = you.cache_get_items_with( "is_cash_card",
+                                                       &item::is_cash_card );
                 if( cash_cards.empty() ) {
                     popup( _( "You do not have a cash card." ) );
                     return false;
@@ -915,9 +913,8 @@ class atm_menu
         //!Move the money from all the cash cards in inventory to a single card.
         bool do_transfer_all_money() {
             item *dst;
-            std::vector<item *> cash_cards_on_hand = you.items_with( []( const item & i ) {
-                return i.typeId() == itype_cash_card;
-            } );
+            std::vector<item *> cash_cards_on_hand = you.cache_get_items_with( "is_cash_card",
+                    &item::is_cash_card );
             if( you.activity.id() == ACT_ATM ) {
                 dst = you.activity.targets.front().get_item();
                 you.activity.set_to_null(); // stop for now, if required, it will be created again.
@@ -930,7 +927,7 @@ class atm_menu
                 if( cash_cards_on_hand.empty() ) {
                     return false;
                 }
-                dst = cash_cards_on_hand.front();
+                dst = *cash_cards_on_hand.begin();
             }
 
             for( item *i : cash_cards_on_hand ) {
@@ -1754,7 +1751,7 @@ void iexamine::safe( Character &you, const tripoint &examp )
 {
     bool has_cracking_tool = you.has_flag( json_flag_SUPER_HEARING );
     // short-circuit to avoid the more expensive iteration over items
-    has_cracking_tool = has_cracking_tool || you.has_item_with_flag( flag_SAFECRACK );
+    has_cracking_tool = has_cracking_tool || you.cache_has_item_with( flag_SAFECRACK );
 
     if( !has_cracking_tool ) {
         you.moves -= to_moves<int>( 10_seconds );
@@ -2526,9 +2523,7 @@ void iexamine::dirtmound( Character &you, const tripoint &examp )
         add_msg(m_info, _("It is too dark to plant anything now."));
         return;
     }*/
-    std::vector<item *> seed_inv = you.items_with( []( const item & itm ) {
-        return itm.is_seed();
-    } );
+    std::vector<item *> seed_inv = you.cache_get_items_with( "is_seed", &item::is_seed );
     if( seed_inv.empty() ) {
         add_msg( m_info, _( "You have no seeds to plant." ) );
         return;
@@ -2706,7 +2701,8 @@ ret_val<void> iexamine::can_fertilize( Character &you, const tripoint &tile,
     if( here.i_at( tile ).size() > 1 ) {
         return ret_val<void>::make_failure( _( "Tile is already fertilized" ) );
     }
-    if( !you.has_charges( fertilizer, 1 ) ) {
+    if( ( fertilizer->count_by_charges() && !you.has_charges( fertilizer, 1 ) ) ||
+        !you.has_amount( fertilizer, 1 ) ) {
         return ret_val<void>::make_failure(
                    _( "Tried to fertilize with %s, but player doesn't have any." ),
                    fertilizer.c_str() );
@@ -2724,7 +2720,12 @@ void iexamine::fertilize_plant( Character &you, const tripoint &tile,
         return;
     }
 
-    std::list<item> planted = you.use_charges( fertilizer, 1 );
+    std::list<item> planted;
+    if( fertilizer->count_by_charges() ) {
+        planted = you.use_charges( fertilizer, 1 );
+    } else {
+        planted = you.use_amount( fertilizer, 1 );
+    }
 
     // Reduce the amount of time it takes until the next stage of the plant by
     // 20% of a seasons length. (default 2.8 days).
@@ -2762,7 +2763,7 @@ void iexamine::fertilize_plant( Character &you, const tripoint &tile,
 itype_id iexamine::choose_fertilizer( Character &you, const std::string &pname,
                                       bool ask_player )
 {
-    std::vector<const item *> f_inv = you.all_items_with_flag( flag_FERTILIZER );
+    std::vector<item *> f_inv = you.cache_get_items_with( flag_FERTILIZER );
     if( f_inv.empty() ) {
         add_msg( m_info, _( "You have no fertilizer for the %s." ), pname );
         return itype_id();
@@ -2770,7 +2771,7 @@ itype_id iexamine::choose_fertilizer( Character &you, const std::string &pname,
 
     std::vector<itype_id> f_types;
     std::vector<std::string> f_names;
-    for( const item *&f : f_inv ) {
+    for( const item * const &f : f_inv ) {
         if( std::find( f_types.begin(), f_types.end(), f->typeId() ) == f_types.end() ) {
             f_types.push_back( f->typeId() );
             f_names.push_back( f->tname() );
@@ -3112,7 +3113,6 @@ void iexamine::arcfurnace_full( Character &, const tripoint &examp )
     add_msg( _( "It has finished burning, yielding %d calcium carbide." ), result.charges );
 }
 //arc furnace end
-
 
 void iexamine::stook_empty( Character &, const tripoint &examp )
 {
@@ -3476,7 +3476,6 @@ static void fvat_set_full( const tripoint &pos )
     }
 }
 
-
 void iexamine::fvat_empty( Character &you, const tripoint &examp )
 {
     itype_id brew_type;
@@ -3504,9 +3503,7 @@ void iexamine::fvat_empty( Character &you, const tripoint &examp )
     if( !brew_present ) {
         add_msg( _( "This keg is empty." ) );
         // TODO: Allow using brews from crafting inventory
-        const auto b_inv = you.items_with( []( const item & it ) {
-            return it.is_brewable();
-        } );
+        const auto b_inv = you.cache_get_items_with( "is_brewable", &item::is_brewable );
         if( b_inv.empty() ) {
             add_msg( m_info, _( "You have no brew to ferment." ) );
             return;
@@ -3649,12 +3646,14 @@ void iexamine::fvat_full( Character &you, const tripoint &examp )
 
         if( query_yn( _( "Finish brewing?" ) ) ) {
             const std::map<itype_id, int> results = brew_i.brewing_results();
+            const int count = brew_i.count();
+            const time_point birthday = brew_i.birthday();
 
             here.i_clear( examp );
             for( const std::pair<const itype_id, int> &result : results ) {
-                int amount = result.second * brew_i.count();
+                int amount = result.second * count;
                 // TODO: Different age based on settings
-                item booze( result.first, brew_i.birthday() );
+                item booze( result.first, birthday );
                 if( result.first->phase == phase_id::LIQUID ) {
                     booze.charges = amount;
                     here.add_item( examp, booze );
@@ -4217,7 +4216,9 @@ void trap::examine( const tripoint &examp ) const
     }
 
     if( can_not_be_disarmed() ) {
-        add_msg( m_info, _( "That %s looks too dangerous to mess with.  Best leave it alone." ), name() );
+        if( id != tr_ledge ) {
+            add_msg( m_info, _( "That %s looks too dangerous to mess with.  Best leave it alone." ), name() );
+        }
         return;
     }
 
@@ -4577,7 +4578,6 @@ void iexamine::sign( Character &you, const tripoint &examp )
             you.add_msg_if_player( m_neutral, _( "Nothing legible on the sign." ) );
         }
 
-
         // Allow chance to modify message.
         std::vector<tool_comp> tools;
         std::vector<const item *> filter = you.crafting_inventory().items_with( []( const item & it ) {
@@ -4691,9 +4691,9 @@ static int findBestGasDiscount( Character &you )
 {
     int discount = 0;
 
-    for( const item *it : you.all_items_with_flag( flag_GAS_DISCOUNT ) ) {
-        discount = std::max( discount, getGasDiscountCardQuality( *it ) );
-    }
+    you.cache_visit_items_with( flag_GAS_DISCOUNT, [&discount]( const item & it ) {
+        discount = std::max( discount, getGasDiscountCardQuality( it ) );
+    } );
 
     return discount;
 }
@@ -4990,9 +4990,7 @@ void iexamine::pay_gas( Character &you, const tripoint &examp )
     }
 
     if( refund == choice ) {
-        std::vector<item *> cash_cards = you.items_with( []( const item & i ) {
-            return i.typeId() == itype_cash_card;
-        } );
+        std::vector<item *> cash_cards = you.cache_get_items_with( "is_cash_card", &item::is_cash_card );
         if( cash_cards.empty() ) {
             popup( _( "You do not have a cash card to refund money!" ) );
             return;
@@ -5034,54 +5032,65 @@ void iexamine::pay_gas( Character &you, const tripoint &examp )
 
 void iexamine::ledge( Character &you, const tripoint &examp )
 {
+    enum ledge_actions {
+        ledge_peek_down,
+        ledge_climb_down,
+        ledge_cling_down,
+        ledge_jump_across,
+        ledge_fall_down,
+    };
+
+    map &here = get_map();
+    tripoint jump_target( you.posx() + 2 * sgn( examp.x - you.posx() ),
+                          you.posy() + 2 * sgn( examp.y - you.posy() ),
+                          you.posz() );
+    bool jump_target_valid = ( here.ter( jump_target ).obj().trap != tr_ledge );
 
     uilist cmenu;
     cmenu.text = _( "There is a ledge here.  What do you want to do?" );
-    cmenu.addentry( 1, true, 'j', _( "Jump over." ) );
-    cmenu.addentry( 2, true, 'c', _( "Climb down." ) );
-    cmenu.addentry( 3, true, 'p', _( "Peek down." ) );
+    cmenu.addentry( ledge_peek_down, true, 'p', _( "Peek down." ) );
     if( you.has_flag( json_flag_WALL_CLING ) ) {
-        cmenu.addentry( 4, true, 'C', _( "Crawl down." ) );
+        cmenu.addentry( ledge_cling_down, true, 'C', _( "Crawl down." ) );
     }
+    cmenu.addentry( ledge_climb_down, true, 'c', _( "Climb down." ) );
+    cmenu.addentry( ledge_jump_across, jump_target_valid, 'j',
+                    ( jump_target_valid ? _( "Jump across." ) : _( "Can't jump across (need a small gap)." ) ) );
+    cmenu.addentry( ledge_fall_down, true, 'f', _( "Fall down." ) );
 
     cmenu.query();
 
-    map &here = get_map();
     creature_tracker &creatures = get_creature_tracker();
     switch( cmenu.ret ) {
-        case 1: {
+        case ledge_jump_across: {
             // If player is grabbed, trapped, or somehow otherwise movement-impeded, first try to break free
             if( !you.move_effects( false ) ) {
                 you.moves -= 100;
                 return;
             }
 
-            tripoint dest( you.posx() + 2 * sgn( examp.x - you.posx() ),
-                           you.posy() + 2 * sgn( examp.y - you.posy() ),
-                           you.posz() );
             if( you.get_str() < 4 ) {
                 add_msg( m_warning, _( "You are too weak to jump over an obstacle." ) );
             } else if( 100 * you.weight_carried() / you.weight_capacity() > 25 ) {
                 add_msg( m_warning, _( "You are too burdened to jump over an obstacle." ) );
-            } else if( !here.valid_move( examp, dest, false, true ) ) {
+            } else if( !here.valid_move( examp, jump_target, false, true ) ) {
                 add_msg( m_warning, _( "You cannot jump over an obstacle - something is blocking the way." ) );
-            } else if( creatures.creature_at( dest ) ) {
+            } else if( creatures.creature_at( jump_target ) ) {
                 add_msg( m_warning, _( "You cannot jump over an obstacle - there is %s blocking the way." ),
-                         creatures.creature_at( dest )->disp_name() );
-            } else if( here.ter( dest ).obj().trap == tr_ledge ) {
+                         creatures.creature_at( jump_target )->disp_name() );
+            } else if( !jump_target_valid ) {
                 add_msg( m_warning, _( "You are not going to jump over an obstacle only to fall down." ) );
             } else {
                 add_msg( m_info, _( "You jump over an obstacle." ) );
-                you.set_activity_level( LIGHT_EXERCISE );
-                g->place_player( dest );
+                you.set_activity_level( BRISK_EXERCISE );
+                g->place_player( jump_target );
             }
             break;
         }
-        case 2: {
+        case ledge_climb_down: {
             g->climb_down( examp );
             break;
         }
-        case 3: {
+        case ledge_peek_down: {
             // Peek
             tripoint where = examp;
             tripoint below = examp;
@@ -5102,7 +5111,7 @@ void iexamine::ledge( Character &you, const tripoint &examp )
             you.add_msg_if_player( _( "You peek over the ledge." ) );
             break;
         }
-        case 4: {
+        case ledge_cling_down: {
             // If player is grabbed, trapped, or somehow otherwise movement-impeded, first try to break free
             if( !you.move_effects( false ) ) {
                 you.moves -= 100;
@@ -5120,6 +5129,22 @@ void iexamine::ledge( Character &you, const tripoint &examp )
                     g->water_affect_items( you );
                     you.add_msg_if_player( _( "You crawl down and dive underwater." ) );
                 }
+            }
+            break;
+        }
+        case ledge_fall_down: {
+            if( query_yn( _( "Climbing might be safer.  Really fall from the ledge?" ) ) ) {
+                you.moves -= 100;
+                // If player is grabbed, trapped, or somehow otherwise movement-impeded, first try to break free
+                if( !you.move_effects( false ) ) {
+                    return;
+                }
+                // Step into open air, then fall...
+                you.setpos( examp );
+                you.gravity_check();
+            } else {
+                // Just to highlight the trepidation
+                popup( _( "You decided to step back from the ledge." ) );
             }
             break;
         }

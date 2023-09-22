@@ -817,16 +817,6 @@ bool inventory_holster_preset::is_shown( const item_location &contained ) const
         // spilt liquid cannot be picked up
         return false;
     }
-    if( contained->made_of( phase_id::LIQUID ) && !holster->is_watertight_container() ) {
-        return false;
-    }
-    item item_copy( *contained );
-    item_copy.charges = 1;
-    item_location parent = contained.has_parent() ? contained.parent_item() : item_location();
-    if( !holster->can_contain( item_copy, false, false, true, parent ).success() ) {
-        return false;
-    }
-
     //only hide if it is in the toplevel of holster (to allow shuffling of items inside a bag)
     for( const item *it : holster->all_items_top() ) {
         if( it == contained.get_item() ) {
@@ -834,12 +824,6 @@ bool inventory_holster_preset::is_shown( const item_location &contained ) const
         }
     }
 
-    if( contained->is_bucket_nonempty() ) {
-        return false;
-    }
-    if( !holster.parents_can_contain_recursive( &item_copy ) ) {
-        return false;
-    }
     return true;
 }
 
@@ -851,6 +835,25 @@ std::string inventory_holster_preset::get_denial( const item_location &it ) cons
             return ret.str();
         }
     }
+
+    if( it->is_bucket_nonempty() ) {
+        return "item would spill";
+    }
+
+    item item_copy( *it );
+    item_copy.charges = 1;
+    item_location parent = it.has_parent() ? it.parent_item() : item_location();
+
+    ret_val<void> ret = holster->can_contain( item_copy, false, false, true, parent );
+    if( !ret.success() ) {
+        return !ret.str().empty() ? ret.str() : "item can't be stored there";
+    }
+
+    ret = holster.parents_can_contain_recursive( &item_copy );
+    if( !ret.success() ) {
+        return !ret.str().empty() ? ret.str() : "item can't be stored there";
+    }
+
     return {};
 }
 
@@ -1973,7 +1976,6 @@ bool inventory_selector::drag_drop_item( item *sourceItem, item *destItem )
     return false;
 }
 
-
 bool inventory_selector::add_contained_items( item_location &container )
 {
     return add_contained_items( container, own_inv_column );
@@ -2490,7 +2492,6 @@ inventory_selector::stat inventory_selector::get_holster_stat( const units::volu
     std::string holster_caption = string_format( _( "Free Holster Volume (%s): %s Used Holsters:" ),
                                   volume_units_abbr(),
                                   colorize( format_volume( holster_volume ), c_light_gray ) );
-
 
     return display_stat( holster_caption, used_holsters, total_holsters, []( int v ) {
         return string_format( "%d", v );
@@ -3878,8 +3879,6 @@ inventory_selector::stats inventory_insert_selector::get_raw_stats() const
             holster->get_used_holsters() + holstered_items,
             holster->get_total_holsters() );
 }
-
-
 
 pickup_selector::pickup_selector( Character &p, const inventory_selector_preset &preset,
                                   const std::string &selection_column_title, const std::optional<tripoint> &where ) :
