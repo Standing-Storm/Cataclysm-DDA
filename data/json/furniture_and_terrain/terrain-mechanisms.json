@@ -171,6 +171,7 @@
         { "item": "rope_6", "count": [ 3, 4 ] },
         { "item": "2x4", "count": [ 1, 4 ] },
         { "item": "splinter", "count": [ 2, 4 ] },
+        { "item": "nuts_bolts", "charges": [ 2, 3 ] },
         { "item": "block_and_tackle", "count": [ 0, 1 ] }
       ]
     },
@@ -178,7 +179,7 @@
       "ter_set": "t_dirtfloor",
       "items": [
         { "item": "rope_30", "count": 1 },
-        { "item": "nuts_bolts", "count": 1 },
+        { "item": "nuts_bolts", "charges": 3 },
         { "item": "2x4", "count": 8 },
         { "item": "block_and_tackle", "count": 1 }
       ]
@@ -408,7 +409,7 @@
     "examine_action": {
       "type": "cardreader",
       "flags": [ "SCIENCE_CARD_VISITOR" ],
-      "consume_card": true,
+      "consume_card": false,
       "allow_hacking": true,
       "despawn_monsters": true,
       "radius": 3,
@@ -532,7 +533,7 @@
     "examine_action": {
       "type": "cardreader",
       "flags": [ "SCIENCE_CARD_TRANSPORT_1" ],
-      "consume_card": true,
+      "consume_card": false,
       "allow_hacking": false,
       "despawn_monsters": false,
       "radius": 7,

@@ -153,6 +153,7 @@ void Skill::load_skill( const JsonObject &jsobj )
     sk._companion_industry_rank_factor = jsobj.get_int( "companion_industry_rank_factor", 0 );
     sk._companion_skill_practice = companion_skill_practice;
     sk._obsolete = jsobj.get_bool( "obsolete", false );
+    sk._teachable = jsobj.get_bool( "teachable", true );
 
     if( sk.is_contextual_skill() ) {
         contextual_skills[sk.ident()] = sk;
@@ -506,6 +507,18 @@ int SkillLevelMap::get_knowledge_level( const skill_id &ident, const item &conte
 {
     const skill_id id = context.is_null() ? ident : context.contextualize_skill( ident );
     return get_knowledge_level( id );
+}
+
+float SkillLevelMap::get_knowledge_progress_level( const skill_id &ident ) const
+{
+    return static_cast<float>( get_skill_level_object( ident ).knowledgeExperience() ) / 100.0f;
+}
+
+float SkillLevelMap::get_knowledge_progress_level( const skill_id &ident,
+        const item &context ) const
+{
+    const skill_id id = context.is_null() ? ident : context.contextualize_skill( ident );
+    return get_progress_level( id );
 }
 
 bool SkillLevelMap::meets_skill_requirements( const std::map<skill_id, int> &req ) const

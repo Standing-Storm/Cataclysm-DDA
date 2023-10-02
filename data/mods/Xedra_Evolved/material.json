@@ -21,7 +21,8 @@
       { "fuel": 1, "smoke": 5, "burn": 2 },
       { "fuel": 1, "smoke": 10, "burn": 4 }
     ],
-    "resist": { "bash": 2, "cut": 2, "acid": 3, "heat": 1, "bullet": 6, "electric": 2 }
+    "resist": { "bash": 2, "cut": 2, "acid": 3, "heat": 1, "bullet": 6, "electric": 2 },
+    "repair_difficulty": 4
   },
   {
     "type": "material",
@@ -60,6 +61,13 @@
   },
   {
     "type": "material",
+    "id": "mana",
+    "name": "Mana",
+    "copy-from": "pseudo_fuel",
+    "fuel_data": { "energy": "500000 kJ", "perpetual": true }
+  },
+  {
+    "type": "material",
     "id": "moon_tears",
     "name": "Moon Tears",
     "//": "Common matrial used by Fae artisans instead of iron.",
@@ -72,7 +80,8 @@
     "dmg_adj": [ "marked", "dented", "smashed", "shattered" ],
     "bash_dmg_verb": "dented",
     "cut_dmg_verb": "scratched",
-    "resist": { "bash": 13, "cut": 20, "acid": 10, "heat": 10, "bullet": 16, "electric": 10 }
+    "resist": { "bash": 13, "cut": 20, "acid": 10, "heat": 10, "bullet": 16, "electric": 10 },
+    "repair_difficulty": 4
   },
   {
     "type": "material",
@@ -88,7 +97,8 @@
     "bash_dmg_verb": "dented",
     "cut_dmg_verb": "scratched",
     "breathability": "GOOD",
-    "resist": { "bash": 13, "cut": 20, "acid": 10, "heat": 10, "bullet": 16, "electric": 10 }
+    "resist": { "bash": 13, "cut": 20, "acid": 10, "heat": 10, "bullet": 16, "electric": 10 },
+    "repair_difficulty": 5
   },
   {
     "type": "material",
@@ -100,13 +110,14 @@
     "specific_heat_solid": 0.39,
     "latent_heat": 205,
     "conductive": true,
-    "chip_resist": 15,
+    "chip_resist": 18,
     "dmg_adj": [ "marked", "dented", "smashed", "shattered" ],
     "salvaged_into": "scrap_dreamdross",
     "bash_dmg_verb": "dented",
     "cut_dmg_verb": "scratched",
     "breathability": "GOOD",
-    "resist": { "bash": 3, "cut": 4, "acid": 16, "heat": 2, "bullet": 2 }
+    "resist": { "bash": 3, "cut": 4, "acid": 16, "heat": 2, "bullet": 2 },
+    "repair_difficulty": 5
   },
   {
     "type": "material",
@@ -118,14 +129,15 @@
     "specific_heat_solid": 0.39,
     "latent_heat": 205,
     "conductive": true,
-    "chip_resist": 15,
+    "chip_resist": 22,
     "dmg_adj": [ "marked", "dented", "smashed", "shattered" ],
     "repaired_with": "forged_dreamstuff_ingot",
     "salvaged_into": "dreamdross_lump",
     "bash_dmg_verb": "dented",
     "cut_dmg_verb": "scratched",
     "breathability": "GOOD",
-    "resist": { "bash": 8, "cut": 9, "acid": 16, "heat": 4, "bullet": 6 }
+    "resist": { "bash": 8, "cut": 9, "acid": 16, "heat": 4, "bullet": 6 },
+    "repair_difficulty": 6
   },
   {
     "type": "material",
@@ -154,5 +166,18 @@
       { "fuel": -10, "smoke": 2, "burn": 2 }
     ],
     "fuel_data": { "energy": "100 kJ" }
+  },
+  {
+    "type": "material",
+    "id": "elemental_water",
+    "name": "elemental water",
+    "//": "Trying to give it the resistances of frozen water in plastic jugs.",
+    "density": 2,
+    "soft": true,
+    "chip_resist": 15,
+    "dmg_adj": [ "scratched", "cut", "shredded", "tattered" ],
+    "bash_dmg_verb": "shaken",
+    "cut_dmg_verb": "rippled",
+    "resist": { "bash": 6, "cut": 3, "acid": 20, "heat": 2, "bullet": 3 }
   }
 ]

@@ -137,7 +137,7 @@ class item_reader : public generic_typed_reader<item_reader>
                 return profession::itypedec( jv.get_string() );
             }
             JsonArray jarr = jv.get_array();
-            const auto id = jarr.get_string( 0 );
+            const std::string id = jarr.get_string( 0 );
             const snippet_id snippet( jarr.get_string( 1 ) );
             return profession::itypedec( id, snippet );
         }
@@ -195,6 +195,8 @@ void profession::load( const JsonObject &jo, const std::string_view )
         _description_male = to_translation( "prof_desc_male", desc_male );
         _description_female = to_translation( "prof_desc_female", desc_female );
     }
+    optional( jo, was_loaded, "age_lower", age_lower, 16 );
+    optional( jo, was_loaded, "age_upper", age_upper, 55 );
 
     if( jo.has_string( "vehicle" ) ) {
         _starting_vehicle = vproto_id( jo.get_string( "vehicle" ) );
