@@ -2,14 +2,13 @@
 
 #include <functional>
 #include <string>
-#include <type_traits>
 #include <vector>
 
-#include "cata_utility.h"
 #include "condition.h"
 #include "dialogue.h"
 #include "field.h"
 #include "game.h"
+#include "magic.h"
 #include "math_parser_shim.h"
 #include "mtype.h"
 #include "options.h"
@@ -30,111 +29,7 @@ bool is_beta( char scope )
     }
 }
 
-template<typename T>
-constexpr std::string_view _str_type_of( T /* t */ )
-{
-    if constexpr( std::is_same_v<T, double> ) {
-        return "double";
-    } else if constexpr( std::is_same_v<T, std::string> ) {
-        return "string";
-    } else if constexpr( std::is_same_v<T, var_info> ) {
-        return "variable";
-    } else if constexpr( std::is_same_v<T, math_exp> ) {
-        return "sub-expression";
-    }
-    return "cookies";
-}
-
-template<class C, class R = C>
-constexpr R _diag_value_at_parse_time( diag_value::impl_t const &data )
-{
-    return std::visit( overloaded{
-        []( C const & v ) -> R
-        {
-            return v;
-        },
-        []( auto const & v ) -> R
-        {
-            throw std::invalid_argument( string_format( "Expected %s, got %s", _str_type_of( C{} ), _str_type_of( v ) ) );
-        },
-    },
-    data );
-}
-
 } // namespace
-
-double diag_value::dbl() const
-{
-    return _diag_value_at_parse_time<double>( data );
-}
-
-double diag_value::dbl( dialogue const &d ) const
-{
-    return std::visit( overloaded{
-        []( double v )
-        {
-            return v;
-        },
-        []( std::string const & v )
-        {
-            if( std::optional<double> ret = svtod( v ); ret ) {
-                return *ret;
-            }
-            debugmsg( R"(Could not convert string "%s" to double)", v );
-            return 0.0;
-        },
-        [&d]( var_info const & v )
-        {
-            std::string const val = read_var_value( v, d );
-            if( std::optional<double> ret = svtod( val ); ret ) {
-                return *ret;
-            }
-            debugmsg( R"(Could not convert variable "%s" with value "%s" to double)", v.name, val );
-            return 0.0;
-        },
-        [&d]( math_exp const & v )
-        {
-            // FIXME: maybe re-constify eval paths?
-            return v.eval( const_cast<dialogue &>( d ) );
-        }
-    },
-    data );
-}
-
-std::string_view diag_value::str() const
-{
-    return _diag_value_at_parse_time<std::string, std::string_view>( data );
-}
-
-std::string diag_value::str( dialogue const &d ) const
-{
-    return std::visit( overloaded{
-        []( double v )
-        {
-            // NOLINTNEXTLINE(cata-translate-string-literal)
-            return string_format( "%g", v );
-        },
-        []( std::string const & v )
-        {
-            return v;
-        },
-        [&d]( var_info const & v )
-        {
-            return read_var_value( v, d );
-        },
-        [&d]( math_exp const & v )
-        {
-            // NOLINTNEXTLINE(cata-translate-string-literal)
-            return string_format( "%g", v.eval( const_cast<dialogue &>( d ) ) );
-        }
-    },
-    data );
-}
-
-var_info diag_value::var() const
-{
-    return _diag_value_at_parse_time<var_info>( data );
-}
 
 std::function<double( dialogue & )> u_val( char scope,
         std::vector<diag_value> const &params, diag_kwargs const &/* kwargs */ )
@@ -294,6 +189,14 @@ std::function<double( dialogue & )> has_trait_eval( char scope,
     };
 }
 
+std::function<double( dialogue & )> knows_proficiency_eval( char scope,
+        std::vector<diag_value> const &params, diag_kwargs const &/* kwargs */ )
+{
+    return [beta = is_beta( scope ), tid = params[0] ]( dialogue const & d ) {
+        return d.actor( beta )->knows_proficiency( proficiency_id( tid.str( d ) ) );
+    };
+}
+
 std::function<double( dialogue & )> hp_eval( char scope,
         std::vector<diag_value> const &params, diag_kwargs const &/* kwargs */ )
 {
@@ -313,6 +216,85 @@ std::function<void( dialogue &, double )> hp_ass( char scope,
             d.actor( beta )->set_all_parts_hp_cur( val );
         } else {
             d.actor( beta )->set_part_hp_cur( bodypart_id( bp_str ), val );
+        }
+    };
+}
+
+std::function<void( dialogue &, double )> spellcasting_adjustment_ass( char scope,
+        std::vector<diag_value> const &params, diag_kwargs const &kwargs )
+{
+    enum spell_scope {
+        scope_all,
+        scope_mod,
+        scope_school,
+        scope_spell
+    };
+    diag_value filter( std::string{} );
+    spell_scope spellsearch_scope;
+    if( kwargs.count( "mod" ) != 0 ) {
+        filter = *kwargs.at( "mod" );
+        spellsearch_scope = scope_mod;
+    } else if( kwargs.count( "school" ) != 0 ) {
+        filter = *kwargs.at( "school" );
+        spellsearch_scope = scope_school;
+    } else if( kwargs.count( "spell" ) != 0 ) {
+        filter = *kwargs.at( "spell" );
+        spellsearch_scope = scope_spell;
+    } else {
+        spellsearch_scope = scope_all;
+    }
+
+    diag_value whitelist( std::string{} );
+    diag_value blacklist( std::string{} );
+    if( kwargs.count( "flag_whitelist" ) != 0 ) {
+        whitelist = *kwargs.at( "flag_whitelist" );
+    }
+    if( kwargs.count( "flag_blacklist" ) != 0 ) {
+        blacklist = *kwargs.at( "flag_blacklist" );
+    }
+
+    return[beta = is_beta( scope ),
+                spellcasting_property = params[0], whitelist, blacklist, spellsearch_scope,
+         filter]( dialogue const & d, double val ) {
+        std::string const filter_str = filter.str( d );
+        switch( spellsearch_scope ) {
+            case scope_spell:
+                d.actor( beta )->get_character()->magic->get_spell( spell_id( filter_str ) ).set_temp_adjustment(
+                    spellcasting_property.str( d ), val );
+                break;
+            case scope_school: {
+                const trait_id school_id( filter_str );
+                for( spell *spellIt : d.actor( beta )->get_character()->magic->get_spells() ) {
+                    if( spellIt->spell_class() == school_id
+                        && ( whitelist.str( d ).empty() || spellIt->has_flag( whitelist.str( d ) ) )
+                        && ( blacklist.str( d ).empty() || !spellIt->has_flag( blacklist.str( d ) ) )
+                      ) {
+                        spellIt->set_temp_adjustment( spellcasting_property.str( d ), val );
+                    }
+                }
+                break;
+            }
+            case scope_mod: {
+                const mod_id target_mod_id( filter_str );
+                for( spell *spellIt : d.actor( beta )->get_character()->magic->get_spells() ) {
+                    if( spellIt->get_src() == target_mod_id
+                        && ( whitelist.str( d ).empty() || spellIt->has_flag( whitelist.str( d ) ) )
+                        && ( blacklist.str( d ).empty() || !spellIt->has_flag( blacklist.str( d ) ) )
+                      ) {
+                        spellIt->set_temp_adjustment( spellcasting_property.str( d ), val );
+                    }
+                }
+                break;
+            }
+            case scope_all:
+                for( spell *spellIt : d.actor( beta )->get_character()->magic->get_spells() ) {
+                    if( ( whitelist.str( d ).empty() || spellIt->has_flag( whitelist.str( d ) ) )
+                        && ( blacklist.str( d ).empty() || !spellIt->has_flag( blacklist.str( d ) ) )
+                      ) {
+                        spellIt->set_temp_adjustment( spellcasting_property.str( d ), val );
+                    }
+                }
+                break;
         }
     };
 }
@@ -691,8 +673,31 @@ std::function<void( dialogue &, double )> proficiency_ass( char scope,
     };
 }
 
-std::function<double( dialogue & )> test_diag( char /* scope */,
-        std::vector<diag_value> const &params, diag_kwargs const &kwargs )
+namespace
+{
+double _test_add( diag_value const &v, dialogue const &d )
+{
+    double ret{};
+    if( v.is_array() ) {
+        for( diag_value const &w : v.array() ) {
+            ret += _test_add( w, d );
+        }
+    } else {
+        ret += v.dbl( d );
+    }
+    return ret;
+}
+double _test_len( diag_value const &v, dialogue const &d )
+{
+    double ret{};
+    for( diag_value const &w : v.array( d ) ) {
+        ret += w.str( d ).length();
+    }
+    return ret;
+}
+std::function<double( dialogue & )> _test_func( std::vector<diag_value> const &params,
+        diag_kwargs const &kwargs,
+        double ( *f )( diag_value const &v, dialogue const &d ) )
 {
     std::vector<diag_value> all_params( params );
     for( diag_kwargs::value_type const &v : kwargs ) {
@@ -700,13 +705,26 @@ std::function<double( dialogue & )> test_diag( char /* scope */,
             all_params.emplace_back( *v.second );
         }
     }
-    return [all_params]( dialogue const & d ) {
+    return [all_params, f]( dialogue const & d ) {
         double ret = 0;
         for( diag_value const &v : all_params ) {
-            ret += v.dbl( d );
+            ret += f( v, d );
         }
         return ret;
     };
+}
+} // namespace
+
+std::function<double( dialogue & )> test_diag( char /* scope */,
+        std::vector<diag_value> const &params, diag_kwargs const &kwargs )
+{
+    return _test_func( params, kwargs, _test_add );
+}
+
+std::function<double( dialogue & )> test_str_len( char /* scope */,
+        std::vector<diag_value> const &params, diag_kwargs const &kwargs )
+{
+    return _test_func( params, kwargs, _test_len );
 }
 
 std::function<double( dialogue & )> vitamin_eval( char scope,

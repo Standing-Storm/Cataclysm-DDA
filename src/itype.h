@@ -114,6 +114,9 @@ struct islot_tool {
     std::vector<int> rand_charges;
 };
 
+constexpr float base_metabolic_rate =
+    2500.0f;  // kcal / day, standard average for human male, but game does not differentiate genders here.
+
 struct islot_comestible {
     public:
         friend Item_factory;
@@ -179,7 +182,7 @@ struct islot_comestible {
         int monotony_penalty = 2;
 
         /** 1 nutr ~= 8.7kcal (1 nutr/5min = 288 nutr/day at 2500kcal/day) */
-        static constexpr float kcal_per_nutr = 2500.0f / ( 12 * 24 );
+        static constexpr float kcal_per_nutr = base_metabolic_rate / ( 12 * 24 );
 
         bool has_calories() const {
             return default_nutrition.calories > 0;
@@ -1399,7 +1402,7 @@ struct itype {
 
     public:
         /** Damage output in melee for zero or more damage types */
-        std::map<damage_type_id, float> melee;
+        std::unordered_map<damage_type_id, float> melee;
 
         bool default_container_sealed = true;
 
@@ -1414,10 +1417,10 @@ struct itype {
 
     private:
         // load-only, for applying proportional melee values at load time
-        std::map<damage_type_id, float> melee_proportional;
+        std::unordered_map<damage_type_id, float> melee_proportional;
 
         // load-only, for applying relative melee values at load time
-        std::map<damage_type_id, float> melee_relative;
+        std::unordered_map<damage_type_id, float> melee_relative;
 
         /** Can item be combined with other identical items? */
         bool stackable_ = false;
