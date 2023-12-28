@@ -12,13 +12,7 @@
         "text": "[Premonition 8+] *Determine if the voice is a threat*",
         "topic": "TALK_PORTAL_STORM_DANGER_SENSE_SUCCEED",
         "condition": { "math": [ "u_spell_level('clair_danger_sense')", ">", "7" ] }
-      }
-    ]
-  },
-  {
-    "id": [ "TALK_PORTAL_STORM_WHAT_ARE_YOU", "TALK_PORTAL_STORM_DO_FOR_ME", "TALK_PORTAL_STORM_WHAT_DO_YOU_GET" ],
-    "type": "talk_topic",
-    "responses": [
+      },
       {
         "text": "[Telepath] *Read the voice's mind(?)*",
         "topic": "TALK_PORTAL_STORM_telepathy",
@@ -91,6 +85,33 @@
         "text": "That's what life's about: making the right choice at the right time.",
         "topic": "TALK_DONE",
         "effect": [ "u_die" ]
+      }
+    ]
+  },
+  {
+    "id": [ "TALK_PORTAL_STORM_DO_FOR_ME", "TALK_PORTAL_STORM_WHAT_DO_YOU_GET" ],
+    "type": "talk_topic",
+    "responses": [
+      {
+        "text": "No, I want power now.  Give that to me and maybe I'll believe you're sincere.",
+        "topic": "TALK_PORTAL_STORM_GAIN_POWERS_DENIED",
+        "condition": { "not": { "days_since_cataclysm": 30 } }
+      },
+      {
+        "text": "No, I want power now.  Give that to me and maybe I'll believe you're sincere.",
+        "topic": "TALK_PORTAL_STORM_GAIN_POWERS",
+        "condition": { "and": [ { "math": [ "u_awakening_countup", "<=", "0" ] }, { "days_since_cataclysm": 30 } ] }
+      },
+      {
+        "text": "Power? I have .",
+        "topic": "TALK_PORTAL_STORM_GAIN_POWERS",
+        "condition": {
+          "and": [
+            { "math": [ "u_awakening_countup", ">=", "1" ] },
+            { "math": [ "u_awakening_countup", "<=", "3" ] },
+            { "days_since_cataclysm": 30 }
+          ]
+        }
       }
     ]
   }
