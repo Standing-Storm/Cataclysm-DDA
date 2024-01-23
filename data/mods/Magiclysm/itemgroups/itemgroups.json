@@ -1356,7 +1356,8 @@
           { "item": "spell_scroll_protection_aura", "prob": 50 },
           { "item": "spell_scroll_dark_sight", "prob": 30 },
           { "item": "spell_scroll_megablast", "prob": 30 },
-          { "item": "spell_scroll_classless_dispel_magic", "prob": 30 }
+          { "item": "spell_scroll_classless_dispel_magic", "prob": 30 },
+          { "item": "spell_scroll_classless_true_seeing", "prob": 20 }
         ],
         "prob": 40
       },

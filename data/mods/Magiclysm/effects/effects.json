@@ -1025,6 +1025,15 @@
     "enchantments": [ "ench_heat_and_fire_immunity" ]
   },
   {
+    "type": "effect_type",
+    "id": "effect_magic_true_seeing",
+    "name": [ "True Seeing" ],
+    "desc": [ "You have been granted sight beyond sight." ],
+    "rating": "good",
+    "removes_effects": [ "blind" ],
+    "flags": [ "TRUE_SEEING" ]
+  },
+  {
     "id": "effect_dispel_magic",
     "type": "effect_type",
     "name": [ "Dispel Magic" ],
@@ -1155,7 +1164,8 @@
       "gravity_mage_melee",
       "eff_storm_elemental_electric_melee",
       "effect_flame_immunity",
-      "effect_burning_trail"
+      "effect_burning_trail",
+      "effect_magic_true_seeing"
     ]
   }
 ]

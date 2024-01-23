@@ -100,6 +100,7 @@ static const field_type_str_id field_fd_last_known( "fd_last_known" );
 static const json_character_flag json_flag_IGNORE_TEMP( "IGNORE_TEMP" );
 static const json_character_flag json_flag_LIMB_LOWER( "LIMB_LOWER" );
 static const json_character_flag json_flag_LIMB_UPPER( "LIMB_UPPER" );
+static const json_character_flag json_flag_TRUE_SEEING( "TRUE_SEEING" );
 
 static const material_id material_cotton( "cotton" );
 static const material_id material_flesh( "flesh" );
@@ -398,10 +399,9 @@ bool Creature::sees( const Creature &critter ) const
         return false;
     }
 
-    // Used with the Mind over Matter power Obscurity, to telepathically erase yourself from a target's perceptions
-    if( has_effect( effect_telepathic_ignorance ) &&
-        critter.has_effect( effect_telepathic_ignorance_self ) ) {
-        return false;
+    // If the seer has the TRUE_SEEING flag, they automatically see through all the special conditions below
+    if( has_json_character_flag( json_flag_TRUE_SEEING ) ) {
+        return true;
     }
 
     if( ( target_range > 2 && critter.digging() &&
@@ -416,6 +416,8 @@ bool Creature::sees( const Creature &critter ) const
         ( critter.has_flag( mon_flag_NIGHT_INVISIBILITY ) &&
           here.light_at( critter.pos() ) <= lit_level::LOW ) ||
         critter.has_effect( effect_invisibility ) ||
+        ( has_effect( effect_telepathic_ignorance ) &&
+        critter.has_effect( effect_telepathic_ignorance_self ) ) ||
         ( !is_likely_underwater() && critter.is_likely_underwater() &&
           majority_rule( critter.has_flag( mon_flag_WATER_CAMOUFLAGE ),
                          here.has_flag( ter_furn_flag::TFLAG_DEEP_WATER, critter.pos() ),

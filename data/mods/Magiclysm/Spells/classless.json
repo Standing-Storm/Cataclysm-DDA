@@ -499,5 +499,24 @@
     "final_energy_cost": 750,
     "energy_increment": 33.33,
     "base_casting_time": 100
+  },
+  {
+    "id": "classless_true_seeing",
+    "type": "SPELL",
+    "name": "True Seeing",
+    "description": "See through illusions, disguises, or even mundane forms of concealment such as tall grass.",
+    "valid_targets": [ "self" ],
+    "flags": [ "CONCENTRATE", "SOMATIC", "VERBAL" ],
+    "effect": "attack",
+    "effect_str": "effect_magic_true_seeing",
+    "shape": "blast",
+    "difficulty": 7,
+    "max_level": 15,
+    "min_duration": 15000,
+    "max_duration": 240000,
+    "duration_increment": 15000,
+    "energy_source": "MANA",
+    "base_energy_cost": 500,
+    "base_casting_time": 500
   }
 ]

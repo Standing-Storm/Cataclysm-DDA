@@ -1734,5 +1734,14 @@
     "name": { "str": "Scroll of Caustic Blood", "str_pl": "Scrolls of Caustic Blood" },
     "description": "Turn your blood into acid, just like that movie you used to watch all that time.",
     "use_action": { "type": "learn_spell", "spells": [ "biomancer_caustic_blood" ] }
+  },
+  {
+    "type": "BOOK",
+    "copy-from": "spell_scroll",
+    "id": "spell_scroll_classless_true_seeing",
+    "//": "Classless spell",
+    "name": { "str": "Scroll of True Seeing", "str_pl": "Scrolls of True Seeing" },
+    "description": "Magical arts of wizards past, give me sight beyond sight!",
+    "use_action": { "type": "learn_spell", "spells": [ "classless_true_seeing" ] }
   }
 ]
