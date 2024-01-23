@@ -2355,7 +2355,12 @@
   {
     "id": "TREE_COMMUNION_PLUS",
     "type": "json_flag",
-    "info": "You gain greatly enhanced effects from the Mycorrhizal Communion mutation"
+    "info": "You gain greatly enhanced effects from the Mycorrhizal Communion mutation."
+  },
+  {
+    "id": "TRUE_SEEING",
+    "type": "json_flag",
+    "info": "You are capable of seeing through most illusion and deception."
   },
   {
     "id": "ROOTS2",
