@@ -189,6 +189,35 @@
   },
   {
     "type": "effect_on_condition",
+    "id": "EOC_HOMULLUS_FAE_BAN_CANNIBALISM",
+    "eoc_type": "EVENT",
+    "required_event": "character_eats_item",
+    "condition": { "and": [ { "u_has_trait": "HOMULLUS" }, { "math": [ "u_vitamin('human_flesh_vitamin')", ">=", "1" ] } ] },
+    "effect": [
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "run_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN" },
+      { "queue_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN_PAIN", "time_in_future": 1 },
+      { "queue_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN_PAIN", "time_in_future": 1 },
+      { "queue_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN_PAIN", "time_in_future": 1 },
+      { "queue_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN_PAIN", "time_in_future": 1 },
+      { "queue_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN_PAIN", "time_in_future": 1 },
+      { "queue_eocs": "EOC_PARACLESIAN_BROKE_FAE_BAN_PAIN", "time_in_future": 1 },
+      {
+        "u_message": "You feel a horrific stab of pain as you chew and swallow.  A crime beyond the imagining of your forebears, to kill a human and eat of their flesh.",
+        "type": "bad"
+      }
+    ]
+  },
+  {
+    "type": "effect_on_condition",
     "id": "EOC_HOMULLUS_FAE_BAN_KILL_HUMAN_MONSTER",
     "eoc_type": "EVENT",
     "required_event": "character_kills_monster",
