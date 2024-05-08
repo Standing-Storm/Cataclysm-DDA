@@ -42,35 +42,24 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_OVERCOME_PAIN",
         "condition": { "and": [ { "math": [ "u_spell_level('biokin_overcome_pain')", ">=", "1" ] } ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_overcome_pain')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(1)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(1)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
-        ],
-        "false_effect": {
-          "run_eocs": [
-            {
-              "id": "EOC_PRACTICE_BIOKIN_OVERCOME_PAIN_FALSE",
-              "condition": { "math": [ "u_spell_level('biokin_overcome_pain')", ">=", "1" ] },
-              "effect": [
-                { "u_message": "Your knowledge of your powers is so deep that mere contemplation is of no further use to you." },
-                { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
-              ],
-              "false_effect": [
-                { "u_message": "Without even a basic understanding of the power, your meditation is nothing but idle musings." },
-                { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
-              ]
-            }
-          ]
-        }
+        ]
       }
     ]
   },
@@ -87,17 +76,22 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_PHYSICAL_ENHANCE",
         "condition": { "math": [ "u_spell_level('biokin_physical_enhance')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_physical_enhance')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(2)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(2)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ]
       }
@@ -116,17 +110,22 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_BREATHE_SKIN",
         "condition": { "and": [ { "math": [ "u_spell_level('biokin_breathe_skin')", ">=", "1" ] } ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_breathe_skin')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(2)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(2)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -196,17 +195,22 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_FLEXIBILITY",
         "condition": { "math": [ "u_spell_level('biokin_flexibility')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_flexibility')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(3)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(3)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -262,6 +266,87 @@
   {
     "type": "recipe",
     "activity_level": "LIGHT_EXERCISE",
+    "name": "contemplation: burst of speed",
+    "id": "practice_biokin_dash",
+    "description": "Contemplate your powers and improve your ability to cross distances in moments.",
+    "category": "CC_*",
+    "subcategory": "CSC_*_NESTED",
+    "skill_used": "metaphysics",
+    "difficulty": 2,
+    "time": "30 m",
+    "autolearn": false,
+    "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
+    "result_eocs": [
+      {
+        "id": "EOC_PRACTICE_BIOKIN_DASH",
+        "condition": { "math": [ "u_spell_level('biokin_dash')", ">=", "1" ] },
+        "effect": [
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
+          { "math": [ "u_spell_exp('biokin_dash')", "+=", "(contemplation_factor(1))" ] },
+          { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(3)" ] },
+          { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
+        ],
+        "false_effect": [
+          { "u_message": "You attempt to unlock new capabilities within your mind." },
+          { "u_assign_activity": "ACT_PSI_LEARNING_NEW_POWER", "duration": "16 hours" },
+          { "u_add_effect": "effect_psi_learning_new_power", "duration": "16 hours" },
+          { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" },
+          {
+            "queue_eocs": "EOC_PRACTICE_BIOKIN_DASH_LEARNING",
+            "time_in_future": [ { "math": [ "learn_new_power_lower_time_bound(3)" ] }, { "math": [ "learn_new_power_upper_time_bound(3)" ] } ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_PRACTICE_BIOKIN_DASH_LEARNING",
+    "condition": {
+      "and": [
+        { "u_has_effect": "effect_psi_learning_new_power" },
+        {
+          "not": { "u_has_any_effect": [ "sleep", "effect_vitakin_wakeful_resting", "lack_sleep", "sleep_deprived", "under_operation" ] }
+        }
+      ]
+    },
+    "effect": [
+      {
+        "run_eocs": [
+          {
+            "id": "EOC_PRACTICE_BIOKIN_DASH_LEARNING_2",
+            "condition": {
+              "roll_contested": { "math": [ "u_skill('metaphysics') + u_has_proficiency('prof_contemplation_biokinesis')" ] },
+              "difficulty": 7
+            },
+            "effect": [
+              {
+                "u_message": "As you meditate, all the pieces suddenly come together.  You've unlocked the Burst of Speed power.",
+                "popup": true
+              },
+              { "math": [ "u_spell_level('biokin_dash')", "=", "1" ] },
+              { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 15,30 )" ] }
+            ],
+            "false_effect": [
+              { "u_message": "You just couldn't manage to grasp the technique.  You'll have to try again.", "popup": true },
+              { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 15,30 )" ] }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "recipe",
+    "activity_level": "LIGHT_EXERCISE",
     "name": "contemplation: armor skin",
     "id": "practice_biokin_armor_skin",
     "description": "Contemplate your powers and improve your ability to harden your flesh.",
@@ -272,18 +357,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_ARMOR_SKIN",
         "condition": { "math": [ "u_spell_level('biokin_armor_skin')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_armor_skin')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(4)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(4)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -349,18 +439,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_CLIMATE_CONTROL",
         "condition": { "math": [ "u_spell_level('biokin_climate_control')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_climate_control')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(4)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(4)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -416,6 +511,88 @@
   {
     "type": "recipe",
     "activity_level": "LIGHT_EXERCISE",
+    "name": "contemplation: adrenaline trigger",
+    "id": "practice_biokin_adrenaline",
+    "description": "Contemplate your powers and improve your ability to harden your flesh.",
+    "category": "CC_*",
+    "subcategory": "CSC_*_NESTED",
+    "skill_used": "metaphysics",
+    "difficulty": 3,
+    "time": "30 m",
+    "autolearn": false,
+    "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
+    "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
+    "result_eocs": [
+      {
+        "id": "EOC_PRACTICE_BIOKIN_ADRENALINE",
+        "condition": { "math": [ "u_spell_level('biokin_adrenaline')", ">=", "1" ] },
+        "effect": [
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
+          { "math": [ "u_spell_exp('biokin_adrenaline')", "+=", "(contemplation_factor(1))" ] },
+          { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(4)" ] },
+          { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
+        ],
+        "false_effect": [
+          { "u_message": "You attempt to unlock new capabilities within your mind." },
+          { "u_assign_activity": "ACT_PSI_LEARNING_NEW_POWER", "duration": "16 hours" },
+          { "u_add_effect": "effect_psi_learning_new_power", "duration": "16 hours" },
+          { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" },
+          {
+            "queue_eocs": "EOC_PRACTICE_BIOKIN_ADRENALINE_LEARNING",
+            "time_in_future": [ { "math": [ "learn_new_power_lower_time_bound(4)" ] }, { "math": [ "learn_new_power_upper_time_bound(4)" ] } ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_PRACTICE_BIOKIN_ADRENALINE_LEARNING",
+    "condition": {
+      "and": [
+        { "u_has_effect": "effect_psi_learning_new_power" },
+        {
+          "not": { "u_has_any_effect": [ "sleep", "effect_vitakin_wakeful_resting", "lack_sleep", "sleep_deprived", "under_operation" ] }
+        }
+      ]
+    },
+    "effect": [
+      {
+        "run_eocs": [
+          {
+            "id": "EOC_PRACTICE_BIOKIN_ADRENALINE_LEARNING_2",
+            "condition": {
+              "roll_contested": { "math": [ "u_skill('metaphysics') + u_has_proficiency('prof_contemplation_biokinesis')" ] },
+              "difficulty": 8
+            },
+            "effect": [
+              {
+                "u_message": "As you meditate, all the pieces suddenly come together.  You've unlocked the Adrenaline Trigger power.",
+                "popup": true
+              },
+              { "math": [ "u_spell_level('biokin_adrenaline')", "=", "1" ] },
+              { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 20,40 )" ] }
+            ],
+            "false_effect": [
+              { "u_message": "You just couldn't manage to grasp the technique.  You'll have to try again.", "popup": true },
+              { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 20,40 )" ] }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "recipe",
+    "activity_level": "LIGHT_EXERCISE",
     "name": "contemplation: enhance mobility",
     "id": "practice_biokin_enhance_mobility",
     "description": "Contemplate your powers and improve your ability to deal with encumbering gear.",
@@ -426,18 +603,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_ENHANCE_MOBILITY",
         "condition": { "math": [ "u_spell_level('biokin_enhance_mobility')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_enhance_mobility')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(5)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(5)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -503,18 +685,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_HAMMERHAND",
         "condition": { "math": [ "u_spell_level('biokin_hammerhand')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_hammerhand')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(5)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(5)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -580,18 +767,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_REFLEX_ENHANCE",
         "condition": { "math": [ "u_spell_level('biokin_reflex_enhance')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_reflex_enhance')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(6)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(6)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -657,18 +849,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_SEALED_SYSTEM",
         "condition": { "math": [ "u_spell_level('biokin_sealed_system')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_sealed_system')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(7)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(7)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -734,18 +931,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_METABOLISM_ENHANCE",
         "condition": { "math": [ "u_spell_level('biokin_metabolism_enhance')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_metabolism_enhance')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(7)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(7)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -811,18 +1013,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_COMBAT_DANCE",
         "condition": { "math": [ "u_spell_level('biokin_combat_dance')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_combat_dance')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,10 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(8)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(8)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -888,18 +1095,23 @@
     "time": "30 m",
     "autolearn": false,
     "proficiencies": [ { "proficiency": "prof_contemplation_biokinesis", "required": false } ],
-    "tools": [ [ [ "matrix_crystal_drained", -1 ], [ "matrix_crystal_biokinesis", -1 ] ] ],
+    "tools": [
+      [ [ "matrix_crystal_drained", -1 ], [ "black_nether_crystal_pseudo_tool", -1 ], [ "matrix_crystal_biokinesis", -1 ] ]
+    ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_PERFECTED_MOTION",
         "condition": { "math": [ "u_spell_level('biokin_perfected_motion')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_perfected_motion')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 1,5 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(9)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(9)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [
@@ -966,16 +1178,19 @@
     "autolearn": false,
     "tools": [ [ [ "matrix_crystal_drained", -1 ] ] ],
     "components": [ [ [ "matrix_crystal_biokin_dust", 1 ] ] ],
-    "flags": [ "SECRET", "BLIND_HARD" ],
+    "flags": [ "SECRET", "BLIND_EASY", "NO_MANIP", "AFFECTED_BY_PAIN", "NO_BENCH", "NO_ENCHANTMENT" ],
     "result_eocs": [
       {
         "id": "EOC_PRACTICE_BIOKIN_HURRICANE_BLOWS",
         "condition": { "math": [ "u_spell_level('biokin_hurricane_blows')", ">=", "1" ] },
         "effect": [
-          { "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge." },
+          {
+            "u_message": "You spend some time meditating and contemplating your powers and emerge with new knowledge.",
+            "type": "good"
+          },
           { "math": [ "u_spell_exp('biokin_hurricane_blows')", "+=", "(contemplation_factor(1))" ] },
           { "math": [ "u_vitamin('vitamin_psionic_drain')", "+=", "rng( 0,2 )" ] },
-          { "math": [ "u_val('stored_kcal')", "-=", "psionics_contemplation_kcal_cost(10)" ] },
+          { "math": [ "u_calories()", "-=", "psionics_contemplation_kcal_cost(10)" ] },
           { "run_eocs": "EOC_PSI_PRACTICE_FOCUS_MOD" }
         ],
         "false_effect": [

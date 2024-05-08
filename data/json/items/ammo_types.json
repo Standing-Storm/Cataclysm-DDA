@@ -25,6 +25,12 @@
   },
   {
     "type": "ammunition_type",
+    "id": "50ae",
+    "name": ".50 AE",
+    "default": "50ae_jhp"
+  },
+  {
+    "type": "ammunition_type",
     "id": "50beowulf",
     "name": "12.7x42mm",
     "default": "50beowulf_xtp"
@@ -73,6 +79,12 @@
   },
   {
     "type": "ammunition_type",
+    "id": "bolt_ballista",
+    "name": "ballista bolts",
+    "default": "bolt_ballista_steel"
+  },
+  {
+    "type": "ammunition_type",
     "id": "bolt",
     "name": "bolts",
     "default": "bolt_wood"
@@ -91,6 +103,12 @@
   },
   {
     "type": "ammunition_type",
+    "id": "atlatl",
+    "name": "atlatl spears",
+    "default": "steel_atlatl_spear"
+  },
+  {
+    "type": "ammunition_type",
     "id": "pebble",
     "name": "pebbles",
     "default": "pebble"
@@ -106,12 +124,6 @@
     "id": "shot",
     "name": "shot",
     "default": "shot_00"
-  },
-  {
-    "type": "ammunition_type",
-    "id": "shotpaper",
-    "name": "20ga percussion",
-    "default": "shot_paper_00"
   },
   {
     "type": "ammunition_type",
@@ -514,6 +526,12 @@
     "id": "propane",
     "name": "propane",
     "default": "propane"
+  },
+  {
+    "type": "ammunition_type",
+    "id": "biogas",
+    "name": "biogas",
+    "default": "biogas"
   },
   {
     "type": "ammunition_type",

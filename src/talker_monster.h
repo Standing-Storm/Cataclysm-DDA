@@ -43,11 +43,13 @@ class talker_monster_const: public talker_cloner<talker_monster_const>
 
         int pain_cur() const override;
 
+        int perceived_pain_cur() const override;
+
         // effects and values
         bool has_effect( const efftype_id &effect_id, const bodypart_id &bp ) const override;
         effect get_effect( const efftype_id &effect_id, const bodypart_id &bp ) const override;
 
-        std::string get_value( const std::string &var_name ) const override;
+        std::optional<std::string> maybe_get_value( const std::string &var_name ) const override;
 
         bool has_flag( const flag_id &f ) const override;
         bool has_species( const species_id &species ) const override;

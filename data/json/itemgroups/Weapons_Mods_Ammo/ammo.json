@@ -126,7 +126,9 @@
       { "item": "44magnum", "prob": 30 },
       { "item": "10mm_fmj", "prob": 30 },
       { "item": "454_Casull", "prob": 20 },
-      { "item": "500_Magnum", "prob": 20 }
+      { "item": "500_Magnum", "prob": 20 },
+      { "item": "50ae_jhp", "prob": 20 },
+      { "item": "50ae_fmj", "prob": 10 }
     ]
   },
   {
@@ -146,6 +148,8 @@
       { "item": "45colt_jhp", "prob": 14 },
       { "item": "45colt_cowboy", "prob": 36 },
       { "item": "500_Magnum", "prob": 100 },
+      { "item": "50ae_jhp", "prob": 100 },
+      { "item": "50ae_fmj", "prob": 50 },
       { "item": "762_25", "prob": 50 },
       { "item": "762_25hot", "prob": 50 },
       { "item": "762_25typeP", "prob": 50 },
@@ -164,6 +168,8 @@
       { "item": "45colt_jhp", "prob": 14 },
       { "item": "45colt_cowboy", "prob": 36 },
       { "item": "500_Magnum", "prob": 75 },
+      { "item": "50ae_jhp", "prob": 75 },
+      { "item": "50ae_fmj", "prob": 50 },
       { "item": "762_25", "prob": 50 },
       { "item": "762_25hot", "prob": 25 },
       { "item": "762_25typeP", "prob": 35 },
@@ -207,6 +213,8 @@
       { "item": "reloaded_460_fmj", "prob": 5 },
       { "item": "reloaded_460_rowland", "prob": 5 },
       { "item": "reloaded_500_Magnum", "prob": 5 },
+      { "item": "reloaded_50ae_jhp", "prob": 5 },
+      { "item": "reloaded_50ae_fmj", "prob": 5 },
       { "item": "reloaded_57mm", "prob": 50 },
       { "item": "reloaded_9mm", "prob": 160 },
       { "item": "reloaded_9mmfmj", "prob": 80 },
@@ -773,6 +781,7 @@
       { "item": "460_casing", "prob": 60 },
       { "item": "50_casing", "prob": 60 },
       { "item": "500_casing", "prob": 60 },
+      { "item": "50ae_casing", "prob": 60 },
       { "item": "545_casing", "prob": 60 },
       { "item": "50beowulf_casing", "prob": 45 },
       { "item": "450_casing", "prob": 45 },
@@ -827,6 +836,7 @@
       [ "45_casing", 65 ],
       [ "454_casing", 10 ],
       [ "500_casing", 10 ],
+      [ "50ae_casing", 10 ],
       [ "57mm_casing", 10 ],
       [ "46mm_casing", 10 ],
       [ "762_casing", 85 ],
@@ -847,10 +857,10 @@
     "type": "item_group",
     "subtype": "distribution",
     "entries": [
-      { "group": "ammo_casings_gunsmith", "prob": 25, "charges-min": 50, "charges-max": 50 },
-      { "group": "ammo_casings_gunsmith", "prob": 10, "charges-min": 100, "charges-max": 100 },
-      { "group": "ammo_casings_gunsmith", "prob": 2, "charges-min": 250, "charges-max": 250 },
-      { "group": "ammo_casings_gunsmith", "prob": 1, "charges-min": 500, "charges-max": 500 }
+      { "group": "ammo_casings_gunsmith", "prob": 25, "charges": 50 },
+      { "group": "ammo_casings_gunsmith", "prob": 10, "charges": 100 },
+      { "group": "ammo_casings_gunsmith", "prob": 2, "charges": 250 },
+      { "group": "ammo_casings_gunsmith", "prob": 1, "charges": 500 }
     ]
   },
   {
@@ -858,20 +868,20 @@
     "id": "ammo_light_batteries",
     "subtype": "distribution",
     "entries": [
-      { "item": "light_battery_cell", "prob": 25, "charges-min": 0, "charges-max": 100 },
-      { "item": "light_minus_battery_cell", "prob": 12, "charges-min": 0, "charges-max": 50 },
-      { "item": "light_plus_battery_cell", "prob": 9, "charges-min": 0, "charges-max": 150 },
-      { "item": "light_disposable_cell", "prob": 50, "charges-min": 0, "charges-max": 300 }
+      { "item": "light_battery_cell", "prob": 25, "charges": [ 0, 100 ] },
+      { "item": "light_minus_battery_cell", "prob": 12, "charges": [ 0, 50 ] },
+      { "item": "light_plus_battery_cell", "prob": 9, "charges": [ 0, 150 ] },
+      { "item": "light_disposable_cell", "prob": 50, "charges": [ 0, 300 ] }
     ]
   },
   {
     "type": "item_group",
     "id": "ammo_light_batteries_full",
     "items": [
-      { "item": "light_battery_cell", "prob": 25, "charges-min": 100, "charges-max": 100 },
-      { "item": "light_minus_battery_cell", "prob": 12, "charges-min": 50, "charges-max": 50 },
-      { "item": "light_plus_battery_cell", "prob": 9, "charges-min": 150, "charges-max": 150 },
-      { "item": "light_disposable_cell", "prob": 50, "charges-min": 300, "charges-max": 300 }
+      { "item": "light_battery_cell", "prob": 25, "charges": 100 },
+      { "item": "light_minus_battery_cell", "prob": 12, "charges": 50 },
+      { "item": "light_plus_battery_cell", "prob": 9, "charges": 150 },
+      { "item": "light_disposable_cell", "prob": 50, "charges": 300 }
     ]
   },
   {
@@ -879,9 +889,9 @@
     "id": "ammo_medium_batteries",
     "subtype": "distribution",
     "entries": [
-      { "item": "medium_battery_cell", "prob": 40, "charges-min": 0, "charges-max": 500 },
-      { "item": "medium_plus_battery_cell", "prob": 10, "charges-min": 0, "charges-max": 600 },
-      { "item": "medium_disposable_cell", "prob": 80, "charges-min": 0, "charges-max": 1200 }
+      { "item": "medium_battery_cell", "prob": 40, "charges": [ 0, 500 ] },
+      { "item": "medium_plus_battery_cell", "prob": 10, "charges": [ 0, 600 ] },
+      { "item": "medium_disposable_cell", "prob": 80, "charges": [ 0, 1200 ] }
     ]
   },
   {
@@ -889,9 +899,9 @@
     "id": "ammo_medium_batteries_full",
     "subtype": "distribution",
     "entries": [
-      { "item": "medium_battery_cell", "prob": 40, "charges-min": 500, "charges-max": 500 },
-      { "item": "medium_plus_battery_cell", "prob": 10, "charges-min": 600, "charges-max": 600 },
-      { "item": "medium_disposable_cell", "prob": 80, "charges-min": 1200, "charges-max": 1200 }
+      { "item": "medium_battery_cell", "prob": 40, "charges": 500 },
+      { "item": "medium_plus_battery_cell", "prob": 10, "charges": 600 },
+      { "item": "medium_disposable_cell", "prob": 80, "charges": 1200 }
     ]
   },
   {
@@ -899,9 +909,9 @@
     "id": "ammo_heavy_batteries",
     "subtype": "distribution",
     "entries": [
-      { "item": "heavy_battery_cell", "prob": 40, "charges-min": 0, "charges-max": 1000 },
-      { "item": "heavy_plus_battery_cell", "prob": 10, "charges-min": 0, "charges-max": 1250 },
-      { "item": "heavy_disposable_cell", "prob": 80, "charges-min": 0, "charges-max": 2500 }
+      { "item": "heavy_battery_cell", "prob": 40, "charges": [ 0, 1000 ] },
+      { "item": "heavy_plus_battery_cell", "prob": 10, "charges": [ 0, 1250 ] },
+      { "item": "heavy_disposable_cell", "prob": 80, "charges": [ 0, 2500 ] }
     ]
   },
   {
@@ -909,9 +919,9 @@
     "id": "ammo_heavy_batteries_full",
     "subtype": "distribution",
     "entries": [
-      { "item": "heavy_battery_cell", "prob": 40, "charges-min": 1000, "charges-max": 1000 },
-      { "item": "heavy_plus_battery_cell", "prob": 10, "charges-min": 1250, "charges-max": 1250 },
-      { "item": "heavy_disposable_cell", "prob": 80, "charges-min": 2500, "charges-max": 2500 }
+      { "item": "heavy_battery_cell", "prob": 40, "charges": 1000 },
+      { "item": "heavy_plus_battery_cell", "prob": 10, "charges": 1250 },
+      { "item": "heavy_disposable_cell", "prob": 80, "charges": 2500 }
     ]
   },
   {
