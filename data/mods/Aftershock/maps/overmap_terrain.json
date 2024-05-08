@@ -34,6 +34,15 @@
     "flags": [ "SOURCE_FOOD", "SOURCE_GUN", "SOURCE_AMMO" ]
   },
   {
+    "id": "afs_landed_shuttle",
+    "type": "overmap_terrain",
+    "name": "drone shuttle landing site",
+    "sym": "^",
+    "color": "yellow",
+    "see_cost": 2,
+    "flags": [ "SOURCE_SAFETY", "NO_ROTATE" ]
+  },
+  {
     "id": "municipal_reactor_ware",
     "type": "overmap_terrain",
     "name": "warehouse",
@@ -88,6 +97,24 @@
     "see_cost": 3,
     "extras": "marloss",
     "flags": [ "NO_ROTATE", "RISK_HIGH" ]
+  },
+  {
+    "id": "afs_crashed_cargo_shuttle",
+    "type": "overmap_terrain",
+    "name": "crashed cargo droneship",
+    "sym": "s",
+    "color": "i_red",
+    "see_cost": 2,
+    "flags": [ "RISK_HIGH" ]
+  },
+  {
+    "id": "afs_crashed_cargo_shuttle_wraitheon",
+    "type": "overmap_terrain",
+    "name": "crashed military droneship",
+    "sym": "s",
+    "color": "light_green",
+    "see_cost": 2,
+    "flags": [ "RISK_HIGH", "SOURCE_GUN", "SOURCE_AMMO" ]
   },
   {
     "type": "overmap_terrain",

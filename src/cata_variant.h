@@ -6,8 +6,8 @@
 #include <chrono>
 #include <cstddef>
 #include <functional>
-#include <iosfwd>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -17,7 +17,7 @@
 #include "hash_utils.h"
 #include "point.h"
 #include "to_string_id.h"
-#include "type_id.h"
+#include "type_id.h"  // IWYU pragma: keep
 
 class JsonOut;
 class JsonValue;
@@ -68,6 +68,7 @@ enum class cata_variant_type : int {
     palette_id,
     point,
     profession_id,
+    proficiency_id,
     skill_id,
     species_id,
     spell_id,
@@ -188,7 +189,7 @@ struct convert_enum {
 };
 
 // These are the specializations of convert for each value type.
-static_assert( static_cast<int>( cata_variant_type::num_types ) == 48,
+static_assert( static_cast<int>( cata_variant_type::num_types ) == 49,
                "This assert is a reminder to add conversion support for any new types to the "
                "below specializations" );
 
@@ -360,6 +361,9 @@ struct convert<cata_variant_type::point> {
 
 template<>
 struct convert<cata_variant_type::profession_id> : convert_string_id<profession_id> {};
+
+template<>
+struct convert<cata_variant_type::proficiency_id> : convert_string_id<proficiency_id> {};
 
 template<>
 struct convert<cata_variant_type::skill_id> : convert_string_id<skill_id> {};

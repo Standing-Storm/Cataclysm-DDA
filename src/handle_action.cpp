@@ -1,9 +1,9 @@
 #include "game.h" // IWYU pragma: associated
 
-#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <initializer_list>
+#include <list>
 #include <map>
 #include <sstream>
 #include <string>
@@ -24,9 +24,9 @@
 #include "calendar.h"
 #include "catacharset.h"
 #include "character.h"
+#include "character_attire.h"
 #include "character_martial_arts.h"
 #include "clzones.h"
-#include "colony.h"
 #include "color.h"
 #include "construction.h"
 #include "creature_tracker.h"
@@ -49,13 +49,14 @@
 #include "gates.h"
 #include "gun_mode.h"
 #include "help.h"
-#include "input.h"
+#include "input_context.h"
+#include "input_enums.h"
+#include "inventory_ui.h"
 #include "item.h"
 #include "item_group.h"
 #include "itype.h"
 #include "iuse.h"
 #include "level_cache.h"
-#include "lightmap.h"
 #include "line.h"
 #include "magic.h"
 #include "make_static.h"
@@ -63,11 +64,13 @@
 #include "map_iterator.h"
 #include "mapdata.h"
 #include "mapsharing.h"
+#include "mdarray.h"
 #include "messages.h"
 #include "monster.h"
 #include "move_mode.h"
 #include "mtype.h"
 #include "mutation.h"
+#include "npc.h"
 #include "options.h"
 #include "output.h"
 #include "overmap_ui.h"
@@ -77,13 +80,15 @@
 #include "ranged.h"
 #include "rng.h"
 #include "safemode_ui.h"
-#include "scores_ui.h"
 #include "sounds.h"
 #include "string_formatter.h"
+#include "string_input_popup.h"
 #include "timed_event.h"
+#include "translation.h"
 #include "translations.h"
 #include "ui.h"
 #include "ui_manager.h"
+#include "uistate.h"
 #include "units.h"
 #include "value_ptr.h"
 #include "veh_type.h"
@@ -134,11 +139,11 @@ static const itype_id fuel_type_animal( "animal" );
 static const itype_id itype_radiocontrol( "radiocontrol" );
 
 static const json_character_flag json_flag_ALARMCLOCK( "ALARMCLOCK" );
+static const json_character_flag json_flag_NO_PSIONICS( "NO_PSIONICS" );
+static const json_character_flag json_flag_NO_SPELLCASTING( "NO_SPELLCASTING" );
 static const json_character_flag json_flag_SUBTLE_SPELL( "SUBTLE_SPELL" );
 
 static const material_id material_glass( "glass" );
-
-static const mon_flag_str_id mon_flag_RIDEABLE_MECH( "RIDEABLE_MECH" );
 
 static const quality_id qual_CUT( "CUT" );
 
@@ -149,6 +154,7 @@ static const trait_id trait_HIBERNATE( "HIBERNATE" );
 static const trait_id trait_PROF_CHURL( "PROF_CHURL" );
 static const trait_id trait_SHELL2( "SHELL2" );
 static const trait_id trait_SHELL3( "SHELL3" );
+static const trait_id trait_UNDINE_SLEEP_WATER( "UNDINE_SLEEP_WATER" );
 static const trait_id trait_WATERSLEEP( "WATERSLEEP" );
 static const trait_id trait_WATERSLEEPER( "WATERSLEEPER" );
 static const trait_id trait_WAYFARER( "WAYFARER" );
@@ -166,8 +172,6 @@ static const zone_type_id zone_type_STRIP_CORPSES( "STRIP_CORPSES" );
 static const zone_type_id zone_type_UNLOAD_ALL( "UNLOAD_ALL" );
 static const zone_type_id zone_type_VEHICLE_DECONSTRUCT( "VEHICLE_DECONSTRUCT" );
 static const zone_type_id zone_type_VEHICLE_REPAIR( "VEHICLE_REPAIR" );
-
-static const std::string flag_CANT_DRAG( "CANT_DRAG" );
 
 #define dbg(x) DebugLog((x),D_GAME) << __FILE__ << ":" << __LINE__ << ": "
 
@@ -263,6 +267,10 @@ input_context game::get_player_input( std::string &action )
     const visibility_variables &cache = m.get_visibility_variables_cache();
     const level_cache &map_cache = m.get_cache_ref( u.posz() );
     const auto &visibility_cache = map_cache.visibility_cache;
+#if defined(TILES)
+    // Mark cata_tiles draw caches as dirty
+    tilecontext->set_draw_cache_dirty();
+#endif
 
     user_turn current_turn;
 
@@ -469,7 +477,7 @@ static void rcdrive( const point &d )
         tripoint src( c );
         //~ Sound of moving a remote controlled car
         sounds::sound( src, 6, sounds::sound_t::movement, _( "zzz…" ), true, "misc", "rc_car_drives" );
-        player_character.moves -= 50;
+        player_character.mod_moves( -to_moves<int>( 1_seconds ) * 0.5 );
         here.i_rem( src, rc_car );
         car_location_string.clear();
         car_location_string << dest.x << ' ' << dest.y << ' ' << dest.z;
@@ -576,14 +584,14 @@ static void open()
     const tripoint openp = *openp_;
     map &here = get_map();
 
-    player_character.moves -= 100;
+    player_character.mod_moves( -to_moves<int>( 1_seconds ) );
 
     // Is a vehicle part here?
     if( const optional_vpart_position vp = here.veh_at( openp ) ) {
         vehicle *const veh = &vp->vehicle();
         // Check for potential thievery, and restore moves if action is canceled
         if( !veh->handle_potential_theft( player_character ) ) {
-            player_character.moves += 100;
+            player_character.mod_moves( to_moves<int>( 1_seconds ) );
             return;
         }
         // Check if vehicle has a part here that can be opened
@@ -605,7 +613,7 @@ static void open()
                 int outside_openable = veh->next_part_to_open( vp->part_index(), true );
                 if( outside_openable == -1 ) {
                     add_msg( m_info, _( "That %s can only be opened from the inside." ), part_name );
-                    player_character.moves += 100;
+                    player_character.mod_moves( to_moves<int>( 1_seconds ) );
                 } else {
                     veh->open_all_at( openable );
                     //~ %1$s - vehicle name, %2$s - part name
@@ -623,7 +631,7 @@ static void open()
                     add_msg( m_info, _( "That %s is already open." ), name );
                 }
             }
-            player_character.moves += 100;
+            player_character.mod_moves( to_moves<int>( 1_seconds ) );
         }
         return;
     }
@@ -640,19 +648,20 @@ static void open()
         } else if( tid.obj().close ) {
             // if the following message appears unexpectedly, the prior check was for t_door_o
             add_msg( m_info, _( "That door is already open." ) );
-            player_character.moves += 100;
+            player_character.mod_moves( to_moves<int>( 1_seconds ) );
             return;
         }
         add_msg( m_info, _( "No door there." ) );
-        player_character.moves += 100;
+        player_character.mod_moves( to_moves<int>( 1_seconds ) );
     }
 }
 
 static void close()
 {
-    if( const std::optional<tripoint> pnt = choose_adjacent_highlight( _( "Close where?" ),
-                                            pgettext( "no door, gate, etc.", "There is nothing that can be closed nearby." ),
-                                            ACTION_CLOSE, false ) ) {
+    if( const std::optional<tripoint_bub_ms> pnt = choose_adjacent_highlight_bub_ms(
+                _( "Close where?" ),
+                pgettext( "no door, gate, etc.", "There is nothing that can be closed nearby." ),
+                ACTION_CLOSE, false ) ) {
         doors::close_door( get_map(), get_player_character(), *pnt );
     }
 }
@@ -699,15 +708,32 @@ static void grab()
     }
 
     if( const optional_vpart_position vp = here.veh_at( grabp ) ) {
+        std::string veh_name = vp->vehicle().name;
         if( !vp->vehicle().handle_potential_theft( you ) ) {
             return;
         }
-        if( vp->vehicle().has_tag( flag_CANT_DRAG ) ) {
-            add_msg( m_info, _( "There's nothing to grab there!" ) );
+        if( vp.part_with_feature( VPFLAG_WALL_MOUNTED, false ) ) {
+            add_msg( m_info, _( "You can't move that, it's attached to the wall." ) );
             return;
         }
+        // Powergrids with more than one part are undraggable.
+        // Offer to split the targeted part off onto its own, making it draggable.
+        if( vp->vehicle().is_powergrid() && vp->vehicle().part_count() > 1 ) {
+            if( !query_yn(
+                    _( "That's part of a power grid.  Separate it from the grid so you can move it?" ) ) ) {
+                return;
+            }
+            get_player_character().pause();
+            vp->vehicle().separate_from_grid( vp.value().mount() );
+            if( const optional_vpart_position split_vp = here.veh_at( grabp ) ) {
+                veh_name = split_vp->vehicle().name;
+            } else {
+                debugmsg( "Lost the part to drag after splitting power grid!" );
+                return;
+            }
+        }
         you.grab( object_type::VEHICLE, grabp - you.pos() );
-        add_msg( _( "You grab the %s." ), vp->vehicle().name );
+        add_msg( _( "You grab the %s." ), veh_name );
     } else if( here.has_furn( grabp ) ) { // If not, grab furniture if present
         if( !here.furn( grabp ).obj().is_movable() ) {
             add_msg( _( "You can not grab the %s." ), here.furnname( grabp ) );
@@ -745,7 +771,7 @@ static void haul()
     if( hauling && autohaul ) {
         if( haul_qty == 0 ) {
             status_header =
-                _( "You are currently not hauling any items, but autohaul is enabled, so any new items encoutered on the ground will be hauled." );
+                _( "You are currently not hauling any items, but autohaul is enabled, so any new items encountered on the ground will be hauled." );
         } else {
             status_header = string_format(
                                 _( "You are currently hauling %d items.\nAutohaul is enabled, so any new items encountered on the ground will be hauled." ),
@@ -969,7 +995,7 @@ static void smash()
             weary_mult = 1.0f / player_character.exertion_adjusted_move_multiplier( MODERATE_EXERCISE );
 
             const int mod_sta = 2 * player_character.get_standard_stamina_cost();
-            player_character.mod_stamina( mod_sta );
+            player_character.burn_energy_arms( mod_sta );
 
             if( static_cast<int>( player_character.get_skill_level( skill_melee ) ) == 0 ) {
                 player_character.practice( skill_melee, rng( 0, 1 ) * rng( 0, 1 ) );
@@ -1000,7 +1026,7 @@ static void smash()
                 }
             }
         }
-        player_character.moves -= move_cost * weary_mult;
+        player_character.mod_moves( -move_cost * weary_mult );
         player_character.recoil = MAX_RECOIL;
 
         if( bash_result.success ) {
@@ -1206,6 +1232,7 @@ static void sleep()
     if( get_map().has_flag( ter_furn_flag::TFLAG_DEEP_WATER, player_character.pos() ) &&
         !player_character.has_trait( trait_WATERSLEEPER ) &&
         !player_character.has_trait( trait_WATERSLEEP ) &&
+        !player_character.has_trait( trait_UNDINE_SLEEP_WATER ) &&
         boat == nullptr ) {
         add_msg( m_info, _( "You cannot sleep while swimming." ) );
         return;
@@ -1324,7 +1351,7 @@ static void sleep()
         }
     }
 
-    player_character.moves = 0;
+    player_character.set_moves( 0 );
     player_character.try_to_sleep( try_sleep_dur );
 }
 
@@ -1710,8 +1737,18 @@ static void cast_spell()
     }
 
     if( !can_cast_spells ) {
-        add_msg( game_message_params{ m_bad, gmf_bypass_cooldown },
-                 _( "You can't cast any of the spells you know!" ) );
+        if( player_character.has_flag( json_flag_NO_SPELLCASTING ) &&
+            !player_character.has_flag( json_flag_NO_PSIONICS ) ) {
+            add_msg( game_message_params{ m_bad, gmf_bypass_cooldown },
+                     _( "You can't cast any of the spells you know!" ) );
+        } else if( !player_character.has_flag( json_flag_NO_SPELLCASTING ) &&
+                   player_character.has_flag( json_flag_NO_PSIONICS ) ) {
+            add_msg( game_message_params{ m_bad, gmf_bypass_cooldown },
+                     _( "You can't channel any of the powers you know!" ) );
+        } else {
+            add_msg( game_message_params{ m_bad, gmf_bypass_cooldown },
+                     _( "You can't use any of your powers!" ) );
+        }
     }
 
     const int spell_index = player_character.magic->select_spell( player_character );
@@ -1860,7 +1897,7 @@ static void handle_debug_mode()
         first_time = false;
         debugmode::enabled_filters.clear();
         for( int i = 0; i < debugmode::DF_LAST; ++i ) {
-            debugmode::enabled_filters.emplace_back( static_cast<debugmode::debug_filter>( i ) );
+            debugmode::enabled_filters.emplace( static_cast<debugmode::debug_filter>( i ) );
         }
     }
 
@@ -1887,9 +1924,8 @@ static void handle_debug_mode()
 
         entry.extratxt.left = 1;
 
-        const bool active = std::find(
-                                debugmode::enabled_filters.begin(), debugmode::enabled_filters.end(),
-                                static_cast<debugmode::debug_filter>( i ) ) != debugmode::enabled_filters.end();
+        const bool active = debugmode::enabled_filters.count( static_cast<debugmode::debug_filter>
+                            ( i ) ) == 1;
 
         if( toggle_value && active ) {
             toggle_value = false;
@@ -1922,7 +1958,7 @@ static void handle_debug_mode()
                 debugmode_entry_setup( dbmenu.entries[i + 2], toggle_value );
 
                 if( toggle_value ) {
-                    debugmode::enabled_filters.emplace_back( static_cast<debugmode::debug_filter>( i ) );
+                    debugmode::enabled_filters.emplace( static_cast<debugmode::debug_filter>( i ) );
                 }
             }
 
@@ -1931,9 +1967,8 @@ static void handle_debug_mode()
         } else if( dbmenu.ret > 1 ) {
             uilist_entry &entry = dbmenu.entries[dbmenu.ret];
 
-            const auto filter_iter = std::find(
-                                         debugmode::enabled_filters.begin(), debugmode::enabled_filters.end(),
-                                         static_cast<debugmode::debug_filter>( dbmenu.ret - 2 ) );
+            const auto filter_iter = debugmode::enabled_filters.find( static_cast<debugmode::debug_filter>
+                                     ( dbmenu.ret - 2 ) );
 
             const bool active = filter_iter != debugmode::enabled_filters.end();
 
@@ -1942,7 +1977,7 @@ static void handle_debug_mode()
             if( active ) {
                 debugmode::enabled_filters.erase( filter_iter );
             } else {
-                debugmode::enabled_filters.push_back(
+                debugmode::enabled_filters.emplace(
                     static_cast<debugmode::debug_filter>( dbmenu.ret - 2 ) );
             }
         }
@@ -2293,7 +2328,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                     add_msg( m_info, _( "You can't close things while you're riding." ) );
                 }
             } else if( mouse_target ) {
-                doors::close_door( m, player_character, *mouse_target );
+                doors::close_door( m, player_character, tripoint_bub_ms( *mouse_target ) );
             } else {
                 close();
             }
@@ -2471,19 +2506,32 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
         }
 
         case ACTION_SELECT_FIRE_MODE:
-            if( weapon ) {
-                if( weapon->is_gun() && !weapon->is_gunmod() &&
-                    weapon->gun_all_modes().size() > 1 ) {
+            if( weapon && weapon->is_gun() && !weapon->is_gunmod() ) {
+                if( weapon->gun_all_modes().size() > 1 ) {
                     weapon->gun_cycle_mode();
-                } else if( weapon->has_flag( flag_RELOAD_ONE ) ||
-                           weapon->has_flag( flag_RELOAD_AND_SHOOT ) ) {
+                } else {
+                    add_msg( m_info, _( "Your %s has only one firing mode." ), weapon->tname() );
+                }
+            }
+            break;
+
+        case ACTION_SELECT_DEFAULT_AMMO:
+            if( weapon && weapon->is_gun() && !weapon->is_gunmod() ) {
+                if( weapon->has_flag( flag_RELOAD_ONE ) ||
+                    weapon->has_flag( flag_RELOAD_AND_SHOOT ) ) {
                     item::reload_option opt = player_character.select_ammo( weapon, false );
                     if( !opt ) {
                         break;
                     } else if( player_character.ammo_location && opt.ammo == player_character.ammo_location ) {
+                        player_character.add_msg_if_player( _( "Cleared ammo preferences for %s." ), weapon->tname() );
                         player_character.ammo_location = item_location();
-                    } else {
+                    } else if( player_character.has_item( *opt.ammo ) ) {
+                        player_character.add_msg_if_player( _( "Selected %s as default ammo for %s." ), opt.ammo->tname(),
+                                                            weapon->tname() );
                         player_character.ammo_location = opt.ammo;
+                    } else {
+                        player_character.add_msg_if_player(
+                            _( "You need to keep that ammo on you to select it as default ammo." ) );
                     }
                 }
             }
@@ -2641,7 +2689,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
         case ACTION_SUICIDE:
             if( query_yn( _( "Abandon this character?" ) ) ) {
                 if( query_yn( _( "This will kill your character.  Continue?" ) ) ) {
-                    player_character.moves = 0;
+                    player_character.set_moves( 0 );
                     player_character.place_corpse();
                     uquit = QUIT_SUICIDE;
                 }
@@ -2651,7 +2699,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
         case ACTION_SAVE:
             if( query_yn( _( "Save and quit?" ) ) ) {
                 if( save() ) {
-                    player_character.moves = 0;
+                    player_character.set_moves( 0 );
                     uquit = QUIT_SAVED;
                 }
             }
@@ -2891,13 +2939,6 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             display_transparency();
             break;
 
-        case ACTION_DISPLAY_REACHABILITY_ZONES:
-            if( MAP_SHARING::isCompetitive() && !MAP_SHARING::isDebugger() ) {
-                break;    //don't do anything when sharing and not debugger
-            }
-            display_reachability_zones();
-            break;
-
         case ACTION_TOGGLE_DEBUG_MODE:
             if( MAP_SHARING::isCompetitive() && !MAP_SHARING::isDebugger() ) {
                 break;    //don't do anything when sharing and not debugger
@@ -3108,7 +3149,7 @@ bool game::handle_action()
     // This has no action unless we're in a special game mode.
     gamemode->pre_action( act );
 
-    int before_action_moves = player_character.moves;
+    int before_action_moves = player_character.get_moves();
 
     // These actions are allowed while deathcam is active. Registered in game::get_player_input
     if( uquit == QUIT_WATCH || !player_character.is_dead_state() ) {
@@ -3127,9 +3168,9 @@ bool game::handle_action()
     gamemode->post_action( act );
 
     player_character.movecounter = ( !player_character.is_dead_state() ? ( before_action_moves -
-                                     player_character.moves ) : 0 );
+                                     player_character.get_moves() ) : 0 );
     dbg( D_INFO ) << string_format( "%s: [%d] %d - %d = %d", action_ident( act ),
                                     to_turn<int>( calendar::turn ), before_action_moves, player_character.movecounter,
-                                    player_character.moves );
+                                    player_character.get_moves() );
     return !player_character.is_dead_state();
 }

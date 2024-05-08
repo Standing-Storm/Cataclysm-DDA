@@ -63,6 +63,11 @@ int talker_monster_const::pain_cur() const
     return me_mon_const->get_pain();
 }
 
+int talker_monster_const::perceived_pain_cur() const
+{
+    return me_mon_const->get_perceived_pain();
+}
+
 bool talker_monster_const::has_effect( const efftype_id &effect_id, const bodypart_id &bp ) const
 {
     return me_mon_const->has_effect( effect_id, bp );
@@ -80,9 +85,15 @@ void talker_monster::add_effect( const efftype_id &new_effect, const time_durati
     me_mon->add_effect( new_effect, dur, bodypart_str_id( bp ), permanent, intensity, force );
 }
 
-void talker_monster::remove_effect( const efftype_id &old_effect )
+void talker_monster::remove_effect( const efftype_id &old_effect, const std::string &bp )
 {
-    me_mon->remove_effect( old_effect );
+    bodypart_id target_part;
+    if( "RANDOM" == bp ) {
+        target_part = get_player_character().random_body_part( true );
+    } else {
+        target_part = bodypart_str_id( bp );
+    }
+    me_mon->remove_effect( old_effect, target_part );
 }
 
 void talker_monster::mod_pain( int amount )
@@ -90,9 +101,10 @@ void talker_monster::mod_pain( int amount )
     me_mon->mod_pain( amount );
 }
 
-std::string talker_monster_const:: get_value( const std::string &var_name ) const
+std::optional<std::string> talker_monster_const::maybe_get_value( const std::string &var_name )
+const
 {
-    return me_mon_const->get_value( var_name );
+    return me_mon_const->maybe_get_value( var_name );
 }
 
 bool talker_monster_const::has_flag( const flag_id &f ) const
