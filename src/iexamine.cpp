@@ -2785,6 +2785,10 @@ void iexamine::harvest_plant( Character &you, const tripoint_bub_ms &examp, bool
             int skillLevel = round( you.get_skill_level( skill_survival ) );
             ///\EFFECT_SURVIVAL increases number of plants harvested from a seed
             int plant_count = rng( skillLevel / 2, skillLevel );
+            int plant_enchant_modifier = you.enchantment_cache->get_value_add( enchant_vals::mod::HARVEST_MULTIPLIER );
+            const double harvest_multiplier = you.enchantment_cache->get_value_multiply( enchant_vals::mod::HARVEST_MULTIPLIER );
+            plant_count *= harvest_multiplier; 
+            plant_count += plant_enchant_modifier; 
             const auto &fp = here.furn( examp )->plant;
             plant_count *= fp->harvest_multiplier;
             plant_count = std::min( std::max( plant_count, 1 ), 12 );

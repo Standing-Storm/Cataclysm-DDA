@@ -892,9 +892,11 @@ Character status value  | Description
 `FAT_TO_MAX_HP`         | Changes the amount of HP, that is given to you by your fat. Formula is `((your_calories/7716.17)/((your_height_in_cm/100)^2))*hitsize_of_all_non_bionic_bodyparts`. Using `add` works just as adding HP, so use `multiply` instead
 `FOOTSTEP_NOISE`        | 
 `FORCEFIELD`            | Chance your character reduces incoming damage to 0. From 0.0 (no chance), to 1.0 (100% chance to avoid attacks).
+`HARVEST_MULTIPLIER`    | Affects how many seeds and crops you get when harvesting plants.
 `HEALTHY_RATE`          | How much of your health is changed daily. `"multiply": -1` stops any changes in health
 `HEARING_MULT`          | How well you can hear. Remember that increased hearing means you would have a bigger "noise" written in UI; default step noise of 6, multiplied 10 times, would show it as 60
 `HUNGER`                | Affects how fast your hunger level changes. Do not affect actual calorie burn, the `METABOLISM` field is responsible for this
+
 `INTELLIGENCE`          | Affects the intelligence stat.
 `KCAL`                  | Same as bio_digestion effect, increases the amount of calories obtained the food.
 `KNOCKBACK_RESIST`      | The amount knockback effects you, 0 is the regular amount, -100 would be double effect, 100 would be no effect.
