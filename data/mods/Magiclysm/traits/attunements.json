@@ -450,7 +450,13 @@
     "valid": false,
     "description": "The Champion of the Earth, Gaia's Chosen is blessed on all things nature, animate and inanimate.\n\nGaia's Champion: Your Gaia's Chosen abilities grant you a larger HP pool, and enemies have a chance to impale themselves upon your thorns when they attack you.  However, the thorns growing from your skin means you feel pain more acutely.",
     "enchantments": [
-      { "values": [ { "value": "MAX_HP", "multiply": 0.3 }, { "value": "PAIN", "multiply": 0.15 } ] },
+      {
+        "values": [
+          { "value": "MAX_HP", "multiply": 0.3 },
+          { "value": "PAIN", "multiply": 0.15 },
+          { "value": "HARVEST_MULTIPLIER", "add": 1 }
+        ]
+      },
       {
         "hit_me_effect": [
           {
