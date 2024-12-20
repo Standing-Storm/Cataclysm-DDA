@@ -454,7 +454,7 @@
         "values": [
           { "value": "MAX_HP", "multiply": 0.3 },
           { "value": "PAIN", "multiply": 0.15 },
-          { "value": "HARVEST_MULTIPLIER", "add": 1 }
+          { "value": "HARVEST_MULTIPLIER", "multiply": 1 }
         ]
       },
       {
