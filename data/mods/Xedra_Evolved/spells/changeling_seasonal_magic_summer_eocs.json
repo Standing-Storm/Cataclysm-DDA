@@ -115,12 +115,12 @@
           "u_spell_high_duration = ( 15.20 + (u_spell_count('school': 'CHANGELING_SEASONAL_MAGIC_SUMMER') * 3.82) + (u_skill('deduction') * 6.01) )"
         ]
       },
+      { "u_message": "You blaze with brilliant light.", "type": "good" },
+      { "u_cast_spell": { "id": "changeling_summer_powerful_sunlight_spell_aura_effects", "hit_self": false } },
       {
         "u_add_effect": "effect_changeling_summer_powerful_sunlight",
         "duration": { "math": [ "rng(u_spell_low_duration, u_spell_high_duration)" ] }
-      },
-      { "u_message": "You blaze with brilliant light.", "type": "good" },
-      { "u_cast_spell": { "id": "changeling_summer_powerful_sunlight_spell_aura_effects", "hit_self": false } }
+      }
     ]
   },
   {
@@ -136,6 +136,22 @@
             "u_cast_spell": { "id": "changeling_summer_powerful_sunlight_spell_sundeath_self_damage", "hit_self": true }
           },
           { "message": "The <u_name> is seared by the brilliant light!", "type": "neutral" }
+        ]
+      },
+      {
+        "if": { "u_has_flag": "PHOTOPHOBIC" },
+        "then": [
+          { "math": [ "Shadow_Lurking = 1" ] },
+          { "npc_add_effect": "blind_no_msg", "duration": "0 second" },
+          { "npc_message": "The wind laughs through the night", "type": "bad" },
+          {
+            "npc_location_variable": { "global_val": "Shadow_monster" },
+            "monster": "mon_lieutenant_shadow",
+            "target_min_radius": 0,
+            "target_max_radius": 60
+          },
+          { "run_eocs": "EOC_KILL_SHADOW", "beta_loc": { "global_val": "Shadow_monster" } },
+          { "npc_message": "…but it grows more distant for now.", "type": "good" }
         ]
       }
     ]
