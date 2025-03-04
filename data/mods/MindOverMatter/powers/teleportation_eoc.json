@@ -4,6 +4,7 @@
     "id": "EOC_TELEPORT_SELF_CARRIED_VOLUME_CHECKER",
     "effect": [
       { "math": [ "u_teleport_total_carried_volume = 0" ] },
+      { "math": [ "u_teleport_total_wielded_volume = 0" ] },
       {
         "u_run_inv_eocs": "all",
         "search_data": [ { "condition": { "math": [ "n_volume() > 0" ] } } ],
@@ -13,7 +14,35 @@
             "effect": [ { "math": [ "u_teleport_total_carried_volume", "+=", "n_volume()" ] } ]
           }
         ]
-      }
+      },
+      {
+        "u_run_inv_eocs": "all",
+        "search_data": [ { "condition": { "math": [ "n_volume() > 0" ] }, "wielded_only": true } ],
+        "true_eocs": [
+          {
+            "id": "EOC_TELEPORT_SELF_WIELDED_VOLUME_CHECKER_SUM_VOLUME",
+            "effect": [ { "math": [ "u_teleport_total_wielded_volume", "+=", "n_volume()" ] } ]
+          }
+        ]
+      },
+      { "math": [ "u_teleport_total_carried_volume", "-=", "u_teleport_total_wielded_volume" ] },
+      { "math": [ "u_teleport_total_wielded_volume = 0" ] },
+      {
+        "u_run_inv_eocs": "all",
+        "search_data": [ { "condition": { "math": [ "n_volume() > 0" ] }, "wielded_only": true } ],
+        "true_eocs": [
+          {
+            "id": "EOC_TELEPORT_SELF_WIELDED_VOLUME_CHECKER_FIND_GREATEST_VOLUME",
+            "effect": [
+              {
+                "if": { "math": [ "n_volume() > u_teleport_total_wielded_volume" ] },
+                "then": { "math": [ "u_teleport_total_wielded_volume", "+=", "n_volume()" ] }
+              }
+            ]
+          }
+        ]
+      },
+      { "math": [ "u_teleport_total_carried_volume", "+=", "u_teleport_total_wielded_volume" ] }
     ]
   },
   {
