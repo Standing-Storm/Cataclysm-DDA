@@ -15,6 +15,7 @@
           }
         ]
       },
+      { "message": "Total volume is <u_val:teleport_total_carried_volume>", "type": "debug"},
       {
         "u_run_inv_eocs": "all",
         "search_data": [ { "condition": { "math": [ "n_volume() > 0" ] }, "wielded_only": true } ],
@@ -25,7 +26,9 @@
           }
         ]
       },
+      { "message": "Wielded volume is <u_val:teleport_total_wielded_volume>", "type": "debug"},
       { "math": [ "u_teleport_total_carried_volume", "-=", "u_teleport_total_wielded_volume" ] },
+      { "message": "Total volume minus wielded volume is <u_val:teleport_total_carried_volume>", "type": "debug"},
       { "math": [ "u_teleport_total_wielded_volume = 0" ] },
       {
         "u_run_inv_eocs": "all",
@@ -42,6 +45,7 @@
           }
         ]
       },
+      { "message": "Largest volume among wielded items is <u_val:teleport_total_wielded_volume>", "type": "debug"},
       { "math": [ "u_teleport_total_carried_volume", "+=", "u_teleport_total_wielded_volume" ] }
     ]
   },
