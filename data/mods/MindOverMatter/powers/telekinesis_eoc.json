@@ -84,7 +84,7 @@
                       {
                         "u_knockback": { "math": [ "u_telekinesis_shove_spell_level" ] },
                         "stun": 1,
-                        "dam_mult": 2,
+                        "dam_mult": { "math": [ "1 + (u_telekinesis_shove_spell_level * 0.5)" ] },
                         "direction_var": { "context_val": "push_direction_correct" }
                       }
                     ]
@@ -209,7 +209,7 @@
                       {
                         "u_knockback": { "math": [ "u_telekinesis_shove_spell_level" ] },
                         "stun": 1,
-                        "dam_mult": 5,
+                        "dam_mult": { "math": [ "1 + (u_telekinesis_shove_spell_level * 0.5)" ] },
                         "direction_var": { "context_val": "push_direction_correct" }
                       }
                     ]
