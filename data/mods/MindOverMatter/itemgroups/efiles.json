@@ -1,0 +1,8 @@
+[
+  {
+    "id": "efile_fifth_sun_pictures_collection",
+    "type": "item_group",
+    "subtype": "collection",
+    "entries": [ { "item": "efile_fifth_sun_picture", "prob": 100, "count": [ 2, 4 ] } ]
+  }
+]

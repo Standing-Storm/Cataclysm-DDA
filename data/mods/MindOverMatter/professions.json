@@ -624,6 +624,7 @@
           {
             "item": "itzcuauhtli_wrist_computer",
             "variant": "itzcuauhtli_wrist_computer_standard",
+            "contents-group": "efile_fifth_sun_pictures_collection",
             "charges": [ 7000, 10000 ]
           },
           { "item": "matrix_crystal_teleportation" },
@@ -796,6 +797,7 @@
           {
             "item": "itzcuauhtli_wrist_computer",
             "variant": "itzcuauhtli_wrist_computer_standard",
+            "contents-group": "efile_fifth_sun_pictures_collection",
             "charges": [ 7000, 10000 ]
           }
         ]

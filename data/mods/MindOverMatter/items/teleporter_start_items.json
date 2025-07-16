@@ -606,7 +606,8 @@
       "NO_RELOAD",
       "ALLOWS_NATURAL_ATTACKS",
       "OVERSIZE",
-      "NO_REPAIR"
+      "NO_REPAIR",
+      "VIEW_PHOTOS"
     ],
     "symbol": "[",
     "use_action": [ "E_FILE_DEVICE", "EBOOKSAVE", "MP3", "CAMERA", "CALORIES_INTAKE_TRACKER", "PORTABLE_GAME", "FITNESS_CHECK" ],

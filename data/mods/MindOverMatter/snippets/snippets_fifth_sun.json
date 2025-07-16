@@ -15,5 +15,15 @@
         "type": "neutral"
       }
     ]
+  },
+  {
+    "type": "snippet",
+    "category": "fifth_sun_photo_standard",
+    "text": [
+      { "id": "fifth_sun_photo_1", "name": "Fifth Sun Photo 1", "text": "Test 1" },
+      { "id": "fifth_sun_photo_2", "name": "Fifth Sun Photo 2", "text": "Test 2" },
+      { "id": "fifth_sun_photo_3", "name": "Fifth Sun Photo 3", "text": "Test 3" },
+      { "id": "fifth_sun_photo_4", "name": "Fifth Sun Photo 4", "text": "Test 4" }
+    ]
   }
 ]

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "efile_fifth_sun_picture",
+    "type": "ITEM",
+    "copy-from": "abstract_efile",
+    "category": "e_files",
+    "name": { "str": "Fifth Sun efile", "//~": "NO_I18N" },
+    "description": { "str": "abstract Fifth Sun photo, this one should not be visible.", "//~": "NO_I18N" },
+    "ememory_size": "64 MB",
+    "snippet_category": "fifth_sun_photo_standard",
+    "flags": [ "E_STORABLE_EXCLUSIVE", "ZERO_WEIGHT", "NO_DROP", "IRREMOVABLE" ]
+  }
+]
