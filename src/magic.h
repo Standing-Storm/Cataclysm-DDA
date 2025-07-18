@@ -444,6 +444,7 @@ class spell_type
         std::optional<jmath_func_id> get_level_formula_id;
         std::optional<jmath_func_id> exp_for_level_formula_id;
         std::optional<int> max_book_level;
+        std::optional<double> learning_new_spell_modifier;
 };
 
 class spell

@@ -2690,9 +2690,14 @@ int known_magic::time_to_learn_spell( const Character &guy, const spell_id &sp )
 {
     const_dialogue d( get_const_talker_for( guy ), nullptr );
     const int base_time = to_moves<int>( 30_minutes );
+    float time_modifier = 1;
+    if( type->magic_type.has_value() && type->magic_type.value()->learning_new_spell_modifier.has_value() ) {
+        time_modifier *= type->magic_type.value()->learning_new_spell_modifier.evaluate( d );
+        clamp( time_modifier, 0.1f, 100.0f );
+    }
     const double int_modifier = ( guy.get_int() - 8.0 ) / 8.0;
     const double skill_modifier = guy.get_skill_level( sp->skill ) / 10.0;
-    return base_time * ( 1.0 + sp->difficulty.evaluate( d ) / ( 1.0 + int_modifier + skill_modifier ) );
+    return base_time * time_modifier * ( 1.0 + sp->difficulty.evaluate( d ) / ( 1.0 + int_modifier + skill_modifier ) );
 }
 
 int known_magic::get_spellname_max_width()

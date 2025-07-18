@@ -47,6 +47,7 @@ void magic_type::load( const JsonObject &jo, std::string_view src )
     }
     optional( jo, was_loaded, "casting_xp_formula_id", casting_xp_formula_id );
     optional( jo, was_loaded, "failure_chance_formula_id", failure_chance_formula_id );
+    optional( jo, was_loaded, "learning_new_spell_modifier", learning_new_spell_modifier );
     optional( jo, was_loaded, "energy_source", energy_source );
     if( jo.has_array( "cannot_cast_flags" ) ) {
         for( auto &cannot_cast_flag : jo.get_string_array( "cannot_cast_flags" ) ) {
