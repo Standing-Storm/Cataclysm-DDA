@@ -11,6 +11,7 @@
       {
         "result": "fd_fire",
         "valid_field": [
+          "fd_null",
           "fd_bile",
           "fd_gibs_flesh",
           "fd_gibs_veggy",
