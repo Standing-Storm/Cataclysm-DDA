@@ -6,6 +6,30 @@
   },
   {
     "type": "ter_furn_transform",
+    "id": "ter_pyrokin_wall_of_flames",
+    "field": [
+      {
+        "result": "fd_fire",
+        "valid_field": [
+          "fd_null",
+          "fd_blood",
+          "fd_dust",
+          "fd_fungal_haze",
+          "fd_insecticidal_gas",
+          "fd_fungicidal_gas",
+          "fd_hallucinogenic_spores",
+          "fd_fog",
+          "fd_smoke",
+          "fd_cigsmoke",
+          "fd_weedsmoke"
+        ],
+        "message": "The flames roar as they spread!",
+        "message_good": true
+      }
+    ]
+  },
+  {
+    "type": "ter_furn_transform",
     "id": "ter_null_zombie_delete_fields",
     "field": [ { "result": "fd_null", "valid_field": [ "fd_nullifying_field", "fd_neutralizing_field" ] } ]
   },

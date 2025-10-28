@@ -600,6 +600,39 @@
   },
   {
     "type": "effect_on_condition",
+    "id": "EOC_PYROKIN_WALL_OF_FLAMES",
+    "effect": [
+      {
+        "u_query_tile": "line_of_sight",
+        "range": {
+          "math": [
+            "clamp( ( ( (u_spell_level('pyrokinetic_wall_of_flames') * 1.1) + 3) * (scaling_factor(u_val('intelligence') ) ) * u_nether_attunement_power_scaling), 1, 70)"
+          ]
+        },
+        "message": "Choose existing fire.",
+        "z_level": true,
+        "target_var": { "context_val": "pyrokin_walls_of_flames_fire_source" }
+      },
+      {
+        "u_query_tile": "line_of_sight",
+        "range": {
+          "math": [
+            "clamp( ( ( (u_spell_level('pyrokinetic_wall_of_flames') * 1.1) + 3) * (scaling_factor(u_val('intelligence') ) ) * u_nether_attunement_power_scaling), 1, 70)"
+          ]
+        },
+        "message": "Choose terminus.",
+        "z_level": true,
+        "target_var": { "context_val": "pyrokin_walls_of_flames_second_target" }
+      },
+      {
+        "transform_line": "ter_pyrokin_wall_of_flames",
+        "first": { "context_val": "pyrokin_walls_of_flames_fire_source" },
+        "second": { "context_val": "pyrokin_walls_of_flames_second_target" }
+      }
+    ]
+  },
+  {
+    "type": "effect_on_condition",
     "id": "EOC_SPELL_PYROKIN_THERMOGENESIS_SELECTOR",
     "effect": [
       {
