@@ -50,7 +50,6 @@
     "effect": [
       { "u_add_trait": "UNKNOWING_CHANGELING_COMMONER_BROWNIE" },
       { "u_lose_trait": "FAIR_FOLK_COMMONER_SELECTOR" },
-      { "u_message": "XE_CHANGELING_COMMONER_BROWNIE", "type": "neutral", "snippet": true },
       { "run_eocs": "EOC_PLAYABLE_CHANGELING_BROWNIE_GAIN_NEW_TRAIT" }
     ]
   },
@@ -117,6 +116,9 @@
       ]
     },
     "effect": [
+    { "run_eocs": [{
+    "id": "EOC_PLAYABLE_CHANGELING_BROWNIE_GAIN_NEW_TRAIT",
+    "effect": [
       { "u_message": "XE_CHANGELING_COMMONER_BROWNIE", "type": "neutral", "snippet": true },
       { "math": [ "u_vitamin('mutagen_fair_folk_commoner_brownie') += 2500" ] },
       { "math": [ "u_vitamin('mutagen') += 1000" ] },
@@ -124,6 +126,7 @@
       { "math": [ "u_vitamin('mutagen_fair_folk_commoner_brownie') -= 2500" ] },
       { "math": [ "u_vitamin('mutagen') -= 1000" ] },
       { "math": [ "u_changeling_advancement_dreams_counter--" ] }
+      ] }] }
     ]
   },
   {
