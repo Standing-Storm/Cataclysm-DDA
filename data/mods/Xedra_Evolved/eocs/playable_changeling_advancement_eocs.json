@@ -105,30 +105,36 @@
     ]
   },
   {
-    "type": "effect_on_condition",
-    "id": "EOC_PLAYABLE_CHANGELING_BROWNIE_NEW_POWERS",
-    "eoc_type": "EVENT",
-    "required_event": "character_wakes_up",
-    "condition": {
-      "and": [
-        { "u_has_trait": "UNKNOWING_CHANGELING_COMMONER_BROWNIE" },
-        { "math": [ "u_changeling_advancement_dreams_counter >= 1" ] }
-      ]
-    },
-    "effect": [
-    { "run_eocs": [{
-    "id": "EOC_PLAYABLE_CHANGELING_BROWNIE_GAIN_NEW_TRAIT",
-    "effect": [
-      { "u_message": "XE_CHANGELING_COMMONER_BROWNIE", "type": "neutral", "snippet": true },
-      { "math": [ "u_vitamin('mutagen_fair_folk_commoner_brownie') += 2500" ] },
-      { "math": [ "u_vitamin('mutagen') += 1000" ] },
-      { "u_mutate": 0 },
-      { "math": [ "u_vitamin('mutagen_fair_folk_commoner_brownie') -= 2500" ] },
-      { "math": [ "u_vitamin('mutagen') -= 1000" ] },
-      { "math": [ "u_changeling_advancement_dreams_counter--" ] }
-      ] }] }
+  "type": "effect_on_condition",
+  "id": "EOC_PLAYABLE_CHANGELING_BROWNIE_NEW_POWERS",
+  "eoc_type": "EVENT",
+  "required_event": "character_wakes_up",
+  "condition": {
+    "and": [
+      { "u_has_trait": "UNKNOWING_CHANGELING_COMMONER_BROWNIE" },
+      { "math": [ "u_changeling_advancement_dreams_counter >= 1" ] }
     ]
   },
+  "effect": [
+    {
+      "run_eocs": [
+        {
+          "id": "EOC_PLAYABLE_CHANGELING_BROWNIE_GAIN_NEW_TRAIT",
+          "effect": [
+            { "u_message": "XE_CHANGELING_COMMONER_BROWNIE", "type": "neutral", "snippet": true },
+            { "math": [ "u_vitamin('mutagen_fair_folk_commoner_brownie') += 2500" ] },
+            { "math": [ "u_vitamin('mutagen') += 1000" ] },
+            { "u_mutate": 0 },
+            { "math": [ "u_vitamin('mutagen_fair_folk_commoner_brownie') -= 2500" ] },
+            { "math": [ "u_vitamin('mutagen') -= 1000" ] },
+            { "math": [ "u_changeling_advancement_dreams_counter--" ] }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
   {
     "type": "effect_on_condition",
     "id": "EOC_PLAYABLE_CHANGELING_POOKA_NEW_POWERS",
