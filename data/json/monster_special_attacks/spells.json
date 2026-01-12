@@ -1375,7 +1375,9 @@
     "max_range": 1,
     "min_damage": 45,
     "max_damage": 90,
-    "damge_type": "bash",
+    "min_pierce": 100,
+    "max_pierce": 100,
+    "damage_type": "bash",
     "min_duration": 1,
     "max_duration": 2
   },
@@ -1387,7 +1389,7 @@
     "flags": [ "NO_PROJECTILE", "NO_EXPLOSION_SFX" ],
     "effect": "effect_on_condition",
     "effect_str": "EOC_MON_ZOMBIE_HULK_GROUND_SMASH",
-    "valid_targets": [ "hostile" ],
+    "valid_targets": [ "hostile", "ground" ],
     "shape": "blast",
     "min_aoe": 2,
     "max_aoe": 2

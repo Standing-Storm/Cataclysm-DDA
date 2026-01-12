@@ -5279,7 +5279,8 @@
     "id": "effect_zombie_hulk_smash_ground",
     "//": "Hidden effect, used to let zombie hulks do their smash attack",
     "name": [ "" ],
-    "desc": [ "" ]
+    "desc": [ "" ],
+    "flags": [ "CANNOT_MOVE" ]
   },
   {
     "type": "effect_type",

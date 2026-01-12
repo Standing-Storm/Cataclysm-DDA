@@ -429,7 +429,7 @@
         "type": "spell",
         "id": "mon_zombie_hulk_swing_grabbed_target",
         "spell_data": { "id": "mon_zombie_hulk_swing_grabbed_target", "min_level": 1 },
-        "monster_message": "%1$s raises %3$s into the air and slams them into the ground.",
+        "monster_message": "%1$s raises %3$s into the air and slams <mypronoun> into the ground.",
         "condition": {
           "or": [
             { "npc_has_effect": "grabbed", "bodypart": "arm_r" },
@@ -440,7 +440,7 @@
             { "npc_has_effect": "grabbed", "bodypart": "leg_r" }
           ]
         },
-        "cooldown": 10
+        "cooldown": 5
       },
       {
         "type": "monster_attack",
@@ -448,12 +448,13 @@
         "id": "mon_zombie_hulk_ground_smash_prep",
         "accuracy": 8,
         "cooldown": 30,
-        "move_cost": 150,
+        "move_cost": 200,
         "range": 1,
         "dodgeable": false,
         "blockable": false,
         "effects_require_dmg": false,
-        "self_effects_always": [ { "id": "effect_zombie_hulk_smash_ground", "duration": 3 } ],
+        "self_effects_always": [ { "id": "effect_zombie_hulk_smash_ground", "duration": 2 } ],
+        "condition": { "not": { "u_has_flag": "GRAB_FILTER" } },
         "hit_dmg_u": "%1$s stands straight and raises both arms above its head!",
         "hit_dmg_npc": "%1$s stands straight and raises both arms above its head!",
         "miss_msg_u": "%1$s stands straight and raises both arms above its head!",
@@ -464,7 +465,7 @@
       {
         "id": "mon_zombie_hulk_ground_smash",
         "type": "spell",
-        "spell_data": { "id": "mon_zombie_hulk_ground_smash", "min_level": 22 },
+        "spell_data": { "id": "mon_zombie_hulk_ground_smash", "min_level": 22, "hit_self": true },
         "cooldown": 1,
         "condition": { "u_has_effect": "effect_zombie_hulk_smash_ground" },
         "monster_message": "%1$s jumps up and slams its fists heavily into the ground!"
