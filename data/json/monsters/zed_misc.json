@@ -429,7 +429,7 @@
         "type": "spell",
         "id": "mon_zombie_hulk_swing_grabbed_target",
         "spell_data": { "id": "mon_zombie_hulk_swing_grabbed_target", "min_level": 1 },
-        "monster_message": "%1$s raises %3$s into the air and slams <mypronoun> into the ground.",
+        "monster_message": "%1$s raises %3$s into the air and and then swings downward.",
         "condition": {
           "or": [
             { "npc_has_effect": "grabbed", "bodypart": "arm_r" },
@@ -453,7 +453,7 @@
         "dodgeable": false,
         "blockable": false,
         "effects_require_dmg": false,
-        "self_effects_always": [ { "id": "effect_zombie_hulk_smash_ground", "duration": 2 } ],
+        "self_effects_always": [ { "id": "effect_zombie_hulk_smash_ground", "duration": 4 } ],
         "condition": { "not": { "u_has_flag": "GRAB_FILTER" } },
         "hit_dmg_u": "%1$s stands straight and raises both arms above its head!",
         "hit_dmg_npc": "%1$s stands straight and raises both arms above its head!",

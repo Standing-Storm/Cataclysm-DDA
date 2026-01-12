@@ -1389,10 +1389,22 @@
     "flags": [ "NO_PROJECTILE", "NO_EXPLOSION_SFX" ],
     "effect": "effect_on_condition",
     "effect_str": "EOC_MON_ZOMBIE_HULK_GROUND_SMASH",
+    "extra_effects": [ { "id": "mon_zombie_hulk_ground_smash_remove_effect", "hit_self": true } ],
     "valid_targets": [ "hostile", "ground" ],
     "shape": "blast",
     "min_aoe": 2,
     "max_aoe": 2
+  },
+  {
+    "type": "SPELL",
+    "id": "mon_zombie_hulk_ground_smash_remove_effect",
+    "name": { "str": "Hulk Ground Smash Effect Removal", "//~": "NO_I18N" },
+    "description": { "str": "Remove the effect so the hulk can't use the attack twice sequentially.", "//~": "NO_I18N" },
+    "flags": [ "NO_PROJECTILE", "NO_EXPLOSION_SFX" ],
+    "effect": "remove_effect",
+    "effect_str": "effect_zombie_hulk_smash_ground",
+    "valid_targets": [ "self" ],
+    "shape": "blast"
   },
   {
     "type": "effect_on_condition",
