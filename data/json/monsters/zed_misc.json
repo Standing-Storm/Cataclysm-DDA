@@ -420,7 +420,56 @@
     "vision_night": 4,
     "harvest": "zombie_hulk",
     "grab_strength": 50,
-    "special_attacks": [ { "id": "grab" }, { "id": "scratch_humanoid" }, { "id": "bite_humanoid" }, { "id": "smash", "throw_strength": 96 } ],
+    "special_attacks": [
+      { "id": "grab" },
+      { "id": "scratch_humanoid" },
+      { "id": "bite_humanoid" },
+      { "id": "smash", "throw_strength": 96 },
+      {
+        "type": "spell",
+        "id": "mon_zombie_hulk_swing_grabbed_target",
+        "spell_data": { "id": "mon_zombie_hulk_swing_grabbed_target", "min_level": 1 },
+        "monster_message": "%1$s raises %3$s into the air and slams them into the ground.",
+        "condition": {
+          "or": [
+            { "npc_has_effect": "grabbed", "bodypart": "arm_r" },
+            { "npc_has_effect": "grabbed", "bodypart": "arm_l" },
+            { "npc_has_effect": "grabbed", "bodypart": "head" },
+            { "npc_has_effect": "grabbed", "bodypart": "torso" },
+            { "npc_has_effect": "grabbed", "bodypart": "leg_l" },
+            { "npc_has_effect": "grabbed", "bodypart": "leg_r" }
+          ]
+        },
+        "cooldown": 10
+      },
+      {
+        "type": "monster_attack",
+        "attack_type": "melee",
+        "id": "mon_zombie_hulk_ground_smash_prep",
+        "accuracy": 8,
+        "cooldown": 30,
+        "move_cost": 150,
+        "range": 1,
+        "dodgeable": false,
+        "blockable": false,
+        "effects_require_dmg": false,
+        "self_effects_always": [ { "id": "effect_zombie_hulk_smash_ground", "duration": 3 } ],
+        "hit_dmg_u": "%1$s stands straight and raises both arms above its head!",
+        "hit_dmg_npc": "%1$s stands straight and raises both arms above its head!",
+        "miss_msg_u": "%1$s stands straight and raises both arms above its head!",
+        "miss_msg_npc": "%1$s stands straight and raises both arms above its head!",
+        "no_dmg_msg_u": "%1$s stands straight and raises both arms above its head!",
+        "no_dmg_msg_npc": "%1$s stands straight and raises both arms above its head!"
+      },
+      {
+        "id": "mon_zombie_hulk_ground_smash",
+        "type": "spell",
+        "spell_data": { "id": "mon_zombie_hulk_ground_smash", "min_level": 22 },
+        "cooldown": 1,
+        "condition": { "u_has_effect": "effect_zombie_hulk_smash_ground" },
+        "monster_message": "%1$s jumps up and slams its fists heavily into the ground!"
+      }
+    ],
     "death_drops": "mon_zombie_hulk_death_drops",
     "burn_into": "mon_zombie_fiend",
     "fungalize_into": "mon_zombie_hulk_dusted",

@@ -1357,5 +1357,58 @@
       { "u_location_variable": { "context_val": "zombie_horde_target" } },
       { "signal_hordes": { "context_val": "zombie_horde_target" }, "signal_power": { "math": [ "_summon_effect" ] } }
     ]
+  },
+  {
+    "type": "SPELL",
+    "id": "mon_zombie_hulk_swing_grabbed_target",
+    "name": { "str": "Hulk Ground Smash", "//~": "NO_I18N" },
+    "description": {
+      "str": "While grabbing, the hulk picks you up and slams you into the ground.  Done as a spell to split damage between body parts.",
+      "//~": "NO_I18N"
+    },
+    "flags": [ "NO_PROJECTILE", "NO_EXPLOSION_SFX", "SPLIT_DAMAGE" ],
+    "effect": "attack",
+    "effect_str": "downed",
+    "valid_targets": [ "hostile" ],
+    "shape": "blast",
+    "min_range": 1,
+    "max_range": 1,
+    "min_damage": 45,
+    "max_damage": 90,
+    "damge_type": "bash",
+    "min_duration": 1,
+    "max_duration": 2
+  },
+  {
+    "type": "SPELL",
+    "id": "mon_zombie_hulk_ground_smash",
+    "name": { "str": "Hulk Ground Smash", "//~": "NO_I18N" },
+    "description": { "str": "The hulk slams the ground and knocks you off your feet, or at least staggers you.", "//~": "NO_I18N" },
+    "flags": [ "NO_PROJECTILE", "NO_EXPLOSION_SFX" ],
+    "effect": "effect_on_condition",
+    "effect_str": "EOC_MON_ZOMBIE_HULK_GROUND_SMASH",
+    "valid_targets": [ "hostile" ],
+    "shape": "blast",
+    "min_aoe": 2,
+    "max_aoe": 2
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_MON_ZOMBIE_HULK_GROUND_SMASH",
+    "condition": "has_alpha",
+    "effect": [
+      {
+        "if": { "u_has_flag": "DOWNED_RECOVERY" },
+        "then": [
+          { "u_message": "You stagger for a moment but don't fall." },
+          {
+            "if": "u_is_character",
+            "then": { "u_add_effect": "staggered_character", "duration": { "math": [ "rand(2) + 1" ] } },
+            "else": { "u_add_effect": "staggered", "duration": { "math": [ "rand(2) + 1" ] } }
+          }
+        ],
+        "else": { "u_add_effect": "downed", "duration": { "math": [ "rand(2) + 1" ] } }
+      }
+    ]
   }
 ]
