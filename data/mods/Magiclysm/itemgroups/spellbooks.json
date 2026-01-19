@@ -902,7 +902,8 @@
       { "item": "spell_scroll_eagles_sight", "prob": 35 },
       { "item": "spell_scroll_ogres_strength", "prob": 35 },
       { "item": "spell_scroll_foxs_cunning", "prob": 35 },
-      { "item": "spell_scroll_magus_teleport_mark", "prob": 25 }
+      { "item": "spell_scroll_magus_teleport_mark", "prob": 25 },
+      { "item": "spell_scroll_magus_levitation", "prob": 15 }
     ]
   },
   {

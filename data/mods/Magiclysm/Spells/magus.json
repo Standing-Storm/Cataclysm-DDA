@@ -977,5 +977,77 @@
     "max_level": 15,
     "spell_class": "MAGUS",
     "magic_type": "magiclysm_conjuration_magic"
+  },
+  {
+    "id": "magus_levitation",
+    "type": "SPELL",
+    "name": "Levitation",
+    "description": "Rise into the air, unbound by gravity, and step off at your destination.  This spell only allows you to go vertically, not laterally.  You will remain in the air until you travel laterally.",
+    "valid_targets": [ "self" ],
+    "flags": [ "CONVEYANCE_SPELL", "VERBAL", "NO_LEGS", "CONCENTRATE", "EXTRA_EFFECTS_FIRST" ],
+    "extra_effects": [ { "id": "eoc_conveyance_setup", "hit_self": true }, { "id": "magus_levitation_levitate_in_place", "hit_self": true } ],
+    "min_damage": 1,
+    "max_damage": 1,
+    "effect": "noise",
+    "shape": "blast",
+    "base_casting_time": 150,
+    "base_energy_cost": 800,
+    "final_energy_cost": 400,
+    "energy_increment": -27,
+    "difficulty": 6,
+    "max_level": 15,
+    "spell_class": "MAGUS",
+    "magic_type": "magiclysm_conveyance_magic",
+    "channel_data": {
+      "max_channel_turns": 20,
+      "channel_spell": "magus_levitation_each_turn_spell",
+      "channel_end_spell": "magus_levitation_levitate_in_place"
+    }
+  },
+  {
+    "id": "magus_levitation_levitate_in_place",
+    "type": "SPELL",
+    "name": { "str": "Levitation Flying Effect", "//~": "NO_I18N" },
+    "description": { "str": "Lets you float on the air.", "//~": "NO_I18N" },
+    "valid_targets": [ "self" ],
+    "spell_class": "MAGUS",
+    "flags": [ "SILENT" ],
+    "effect": "attack",
+    "effect_str": "effect_magus_levitating",
+    "shape": "blast",
+    "min_duration": 900000,
+    "max_duration": 900000,
+    "magic_type": "magiclysm_generic_magic"
+  },
+  {
+    "id": "magus_levitation_each_turn_spell",
+    "type": "SPELL",
+    "name": { "str": "Levitation Each Turn", "//~": "NO_I18N" },
+    "description": { "str": "Rise up one Z level per turn.", "//~": "NO_I18N" },
+    "valid_targets": [ "self" ],
+    "spell_class": "MAGUS",
+    "flags": [ "SILENT" ],
+    "effect": "effect_on_condition",
+    "effect_str": "EOC_MAGUS_LEVITATION_EACH_TURN",
+    "shape": "blast",
+    "magic_type": "magiclysm_generic_magic"
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_MAGUS_LEVITATION_EACH_TURN",
+    "condition": "u_is_outside",
+    "effect": [
+      { "u_location_variable": { "context_val": "levitation_pos" }, "min_radius": 0, "max_radius": 0, "z_adjust": 1 },
+      { "u_teleport": { "context_val": "levitation_pos" } }
+    ],
+    "false_effect": [ { "u_message": "You slowly rise up and press yourself against the ceiling.  Oof!", "type": "mixed" } ]
+  },
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_MAGUS_LEVITATION_CANCEL_WHEN_MOVING",
+    "eoc_type": "EVENT",
+    "required_event": "avatar_moves",
+    "condition": { "u_has_effect": "effect_magus_levitating" },
+    "effect": [ { "u_lose_effect": "effect_magus_levitating" } ]
   }
 ]

@@ -2498,5 +2498,15 @@
     "name": { "str": "Scroll of Arete", "str_pl": "Scrolls of Arete" },
     "description": "Become the best you that it's possible to be.",
     "use_action": { "type": "learn_spell", "spells": [ "technomancer_arete_buff_spell" ] }
+  },
+  {
+    "type": "ITEM",
+    "subtypes": [ "BOOK" ],
+    "copy-from": "spell_scroll",
+    "id": "spell_scroll_magus_levitation",
+    "//": "Magus spell",
+    "name": { "str": "Scroll of Levitation", "str_pl": "Scrolls of Levitation" },
+    "description": "Rise into the air with the greatest of ease.",
+    "use_action": { "type": "learn_spell", "spells": [ "magus_levitation" ] }
   }
 ]

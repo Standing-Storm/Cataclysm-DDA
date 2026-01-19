@@ -1852,6 +1852,14 @@
   },
   {
     "type": "effect_type",
+    "id": "effect_magus_levitating",
+    "//": "Hidden effect",
+    "name": [ "" ],
+    "desc": [ "" ],
+    "flags": [ "LEVITATION" ]
+  },
+  {
+    "type": "effect_type",
     "id": "effect_druid_traverse_the_wilds",
     "name": [ "Traverse the Wilds" ],
     "desc": [ "Nature is speeding your passage." ],
