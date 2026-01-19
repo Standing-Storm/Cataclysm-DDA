@@ -1038,7 +1038,9 @@
     "condition": "u_is_outside",
     "effect": [
       { "u_location_variable": { "context_val": "levitation_pos" }, "min_radius": 0, "max_radius": 0, "z_adjust": 1 },
-      { "u_teleport": { "context_val": "levitation_pos" } }
+      { "u_teleport": { "context_val": "levitation_pos" } },
+      { "u_message": "Given position is <context_val:levitation_pos>", "type": "debug" },
+      { "u_message": "The EoC is running", "type": "debug" }
     ],
     "false_effect": [ { "u_message": "You slowly rise up and press yourself against the ceiling.  Oof!", "type": "mixed" } ]
   },
