@@ -985,7 +985,10 @@
     "cooldown": 15,
     "move_cost": 250,
     "hitsize_min": 12,
-    "damage_max_instance": [ { "damage_type": "bash", "amount": 35, "armor_penetration": 10 } ],
+    "damage_max_instance": [
+      { "damage_type": "bash", "amount": 35, "armor_penetration": 10 },
+      { "damage_type": "bash", "amount": 6, "armor_multiplier": 0 }
+    ],
     "dodgeable": true,
     "blockable": false,
     "effects": [ { "id": "downed", "chance": 95, "duration": [ 1, 2 ] } ],
