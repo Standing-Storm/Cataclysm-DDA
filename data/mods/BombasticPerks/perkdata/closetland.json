@@ -38,6 +38,7 @@
       { "math": [ "u_closetland_perk_nearby_walls = 0" ] },
       { "math": [ "u_closetland_perk_nearby_furniture = 0" ] },
       { "math": [ "u_closetland_perk_nearby_doors = 0" ] },
+      { "math": [ "u_closetland_perk_check_any_outside = 0" ] },
       {
         "u_map_run_eocs": [
           {
@@ -98,11 +99,29 @@
         "then": { "math": [ "u_closetland_perk_nearby_walls = 0" ] }
       },
       {
+        "u_map_run_eocs": [
+          {
+            "id": "EOC_BOMBASTIC_PERKS_CLOSET_STORAGE_TRAVEL_TO_CLOSETLAND_FULL_INSIDE_CHECK",
+            "effect": [ { "math": [ "u_closetland_perk_check_any_outside += 1" ] } ]
+          }
+        ],
+        "range": 2,
+        "store_coordinates_in": { "context_val": "closetland_inside_check" },
+        "stop_at_first": false,
+        "condition": {
+          "and": [
+            { "not": { "map_terrain_with_flag": "INDOORS", "loc": { "context_val": "closetland_inside_check" } } },
+            { "not": { "map_terrain_with_flag": "WALL", "loc": { "context_val": "closetland_inside_check" } } }
+          ]
+        }
+      },
+      {
         "if": {
           "and": [
             { "math": [ "u_closetland_perk_nearby_walls >= 5" ] },
             { "math": [ "(u_closetland_perk_nearby_walls + u_closetland_perk_nearby_furniture)  == 7" ] },
-            { "math": [ "u_closetland_perk_nearby_doors == 1" ] }
+            { "math": [ "u_closetland_perk_nearby_doors == 1" ] },
+            { "math": [ "u_closetland_perk_check_any_outside == 0" ] }
           ]
         },
         "then": [
