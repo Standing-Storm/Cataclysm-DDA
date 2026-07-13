@@ -19,6 +19,7 @@ std::map<std::string, pocket_mod_test_data> test_data::pocket_mod_data;
 std::map<std::string, npc_boarding_test_data> test_data::npc_boarding_data;
 std::vector<bash_test_set> test_data::bash_tests;
 std::map<std::string, item_demographic_test_data> test_data::item_demographics;
+std::vector<mapgen_palette_test_data> test_data::mapgen_palette_data;
 
 void efficiency_data::deserialize( const JsonObject &jo )
 {
@@ -112,6 +113,13 @@ void item_demographic_test_data::deserialize( const JsonObject &jo )
         groups[type].second[itm_id] = item_weight;
     }
 }
+
+void mapgen_palette_test_data::deserialize( const JsonObject &jo )
+{
+    mandatory( jo, false, "mapgen_id", mapgen_id );
+    optional( jo, false, "expected", expected );
+}
+
 
 void test_data::load( const JsonObject &jo )
 {
@@ -266,5 +274,13 @@ void test_data::load( const JsonObject &jo )
         }
         // This does not support merging, so only add one instance of each category.
         item_demographics[category] = data;
+    }
+
+    if( jo.has_array( "mapgen_palette_test" ) ) {
+        std::vector<mapgen_palette_test_data> new_mapgen_palette_data;
+        jo.read( "mapgen_palette_test", new_mapgen_palette_data );
+        for( const mapgen_palette_test_data &o : new_mapgen_palette_data ) {
+            mapgen_palette_data.emplace_back( o );
+        }
     }
 }

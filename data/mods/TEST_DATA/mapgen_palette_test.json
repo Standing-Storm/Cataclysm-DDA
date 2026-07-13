@@ -1,0 +1,59 @@
+[
+  {
+    "type": "mapgen",
+    "om_terrain": [ "palette_test" ],
+    "object": {
+      "fill_ter": "t_floor",
+      "rows": [
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR",
+        "RRRRRRRRRRRRRRRRRRRRRRRR"
+      ],
+      "palettes": [ "test_palette" ]
+    }
+  },
+  {
+    "type": "palette",
+    "id": "test_palette",
+    "items": { "R": [ { "item": "SUS_tailoring_bookcase", "chance": 100, "repeat": 10 } ] }
+  },
+  {
+    "type": "test_data",
+    "mapgen_palette_test": [
+      {
+        "mapgen_id": "palette_test",
+        "expected": {
+          "mag_tailor": [ 4608, 36000 ],
+          "manual_tailor": [ 4608, 23040 ],
+          "textbook_tailor": [ 4608, 23040 ],
+          "tailor_portfolio": [ 0, 1152 ],
+          "scots_tailor": [ 0, 576 ],
+          "recipe_fauxfur": [ 0, 230 ],
+          "tailor_japanese": [ 0, 230 ],
+          "dieselpunk_tailor": [ 0, 230 ]
+        }
+      }
+    ]
+  }
+]

@@ -112,6 +112,12 @@ struct item_demographic_test_data {
     void deserialize( const JsonObject &jo );
 };
 
+struct mapgen_palette_test_data {
+    std::string mapgen_id;
+    std::map<itype_id, std::pair<int, int>> expected;
+    void deserialize( const JsonObject &jo );
+};
+
 class test_data
 {
     public:
@@ -130,6 +136,7 @@ class test_data
         static std::map<std::string, npc_boarding_test_data> npc_boarding_data;
         static std::vector<bash_test_set> bash_tests;
         static std::map<std::string, item_demographic_test_data> item_demographics;
+        static std::vector<mapgen_palette_test_data> mapgen_palette_data;
 
         static void load( const JsonObject &jo );
 };
