@@ -832,17 +832,6 @@
     "flags": [ "CLASSIC" ]
   },
   {
-    "id": "mx_XEDRA_mutagen_transport",
-    "type": "map_extra",
-    "name": { "str": "TCL Truck" },
-    "description": "A crash Trans-Coast Logistics truck.",
-    "generator": { "generator_method": "update_mapgen", "generator_id": "mx_XEDRA_mutagen_transport" },
-    "min_max_zlevel": [ 0, 0 ],
-    "sym": "T",
-    "color": "yellow",
-    "flags": [ "CLASSIC" ]
-  },
-  {
     "id": "mx_XEDRA_serum_transport",
     "type": "map_extra",
     "name": { "str": "Vanguard Truck" },
@@ -850,7 +839,6 @@
     "generator": { "generator_method": "update_mapgen", "generator_id": "mx_XEDRA_serum_transport" },
     "min_max_zlevel": [ 0, 0 ],
     "sym": "T",
-    "color": "yellow",
-    "flags": [ "CLASSIC" ]
+    "color": "yellow"
   }
 ]
