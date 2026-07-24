@@ -1559,7 +1559,6 @@ void Character::hardcoded_effects( effect &it )
             }
         }
         if( !recovered ) {
-          
             // PAUSE_INFECTIONS means you cannot die and you have plenty of time when it wears off
             // PAUSE_BODYPART_INFECTION is the same but only if it's on the same bodypart as the infection
             const bool paused_infections = has_flag( json_flag_PAUSE_INFECTIONS );
