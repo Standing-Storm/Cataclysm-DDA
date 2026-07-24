@@ -6,14 +6,14 @@
     "locations": [ "mom_shoggothed_world" ],
     "priority": 3,
     "occurrences": [ 10, 25 ],
-    "flags": [ "WILDERNESS" ],
+    "flags": [ "EXTRADIMENSIONAL", "MOM_SHOGGOTHED_WORLD" ],
     "check_for_locations_area": [
       { "type": [ "mom_shoggothed_world" ], "from": [ -4, -4, 0 ], "to": [ 4, 4, 0 ] },
       { "type": [ "subterranean_empty" ], "from": [ -16, -16, -1 ], "to": [ 16, 16, -2 ] }
     ],
     "joins": [ "ravine_to_ravine", "ravine_to_edge", "ravine_to_bottom" ],
     "overmaps": {
-      "ravine_root": {
+      "shoggoth_ravine_root": {
         "overmap": "open_air",
         "below": { "id": "ravine_to_bottom", "alternatives": [ "ravine_to_edge" ] },
         "north": { "id": "ravine_to_ravine" },
@@ -28,44 +28,44 @@
         "south": { "id": "ravine_to_ravine", "alternatives": [ "ravine_to_edge" ] },
         "west": { "id": "ravine_to_ravine", "alternatives": [ "ravine_to_edge" ] }
       },
-      "ravine_filler_ground": {
+      "shoggoth_ravine_filler_ground": {
         "overmap": "open_air",
         "north": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] },
         "east": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] },
         "south": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] },
         "west": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] }
       },
-      "ravine_straight_ground": { "overmap": "shoggoth_ravine_straight_ground_north", "north": { "id": "ravine_to_ravine" } },
-      "ravine_corner_ground": {
+      "shoggoth_ravine_straight_ground": { "overmap": "shoggoth_ravine_straight_ground_north", "north": { "id": "ravine_to_ravine" } },
+      "shoggoth_ravine_corner_ground": {
         "overmap": "shoggoth_ravine_corner_ground_north",
         "north": { "id": "ravine_to_ravine", "alternatives": [ "ravine_to_edge" ] },
         "east": { "id": "ravine_to_ravine", "alternatives": [ "ravine_to_edge" ] }
       },
-      "ravine_2way_ground": {
+      "shoggoth_ravine_2way_ground": {
         "overmap": "shoggoth_ravine_2way_ground_east",
         "north": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] },
         "south": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] }
       },
-      "ravine_3way_ground": {
+      "shoggoth_ravine_3way_ground": {
         "overmap": "shoggoth_ravine_3way_ground_north",
         "north": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] },
         "east": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] },
         "west": { "id": "ravine_to_ravine", "type": "available", "alternatives": [ "ravine_to_edge" ] }
       },
       "shoggoth_ravine_core": { "overmap": "open_air" },
-      "ravine_filler": { "overmap": "open_air" },
-      "ravine_root_filler": { "overmap": "open_air", "above": { "id": "ravine_to_bottom", "alternatives": [ "ravine_to_edge" ] } },
+      "shoggoth_ravine_filler": { "overmap": "open_air" },
+      "shoggoth_ravine_root_filler": { "overmap": "open_air", "above": { "id": "ravine_to_bottom", "alternatives": [ "ravine_to_edge" ] } },
       "shoggoth_ravine_bottom": { "overmap": "shoggoth_ravine_bottom" },
-      "ravine_straight": { "overmap": "shoggoth_ravine_straight_north" },
-      "ravine_corner": { "overmap": "shoggoth_ravine_corner_north" },
-      "ravine_2way": { "overmap": "shoggoth_ravine_2way_east" },
-      "ravine_3way": { "overmap": "shoggoth_ravine_2way_north" },
-      "ravine_straight_bottom": { "overmap": "ravine_straight_bottom_north" },
-      "ravine_corner_bottom": { "overmap": "shoggoth_ravine_corner_bottom_north" },
-      "ravine_2way_bottom": { "overmap": "shoggoth_ravine_2way_bottom_east" },
-      "ravine_3way_bottom": { "overmap": "shoggoth_ravine_3way_bottom_north" }
+      "shoggoth_ravine_straight": { "overmap": "shoggoth_ravine_straight_north" },
+      "shoggoth_ravine_corner": { "overmap": "shoggoth_ravine_corner_north" },
+      "shoggoth_ravine_2way": { "overmap": "shoggoth_ravine_2way_east" },
+      "shoggoth_ravine_3way": { "overmap": "shoggoth_ravine_2way_north" },
+      "shoggoth_ravine_straight_bottom": { "overmap": "shoggoth_ravine_straight_bottom_north" },
+      "shoggoth_ravine_corner_bottom": { "overmap": "shoggoth_ravine_corner_bottom_north" },
+      "shoggoth_ravine_2way_bottom": { "overmap": "shoggoth_ravine_2way_bottom_east" },
+      "shoggoth_ravine_3way_bottom": { "overmap": "shoggoth_ravine_3way_bottom_north" }
     },
-    "root": "ravine_root",
+    "root": "shoggoth_ravine_root",
     "phases": [
       [
         {
@@ -221,8 +221,8 @@
         {
           "name": "ravine filler",
           "chunk": [
-            { "overmap": "ravine_filler_ground", "pos": [ 0, 0, 0 ] },
-            { "overmap": "ravine_filler", "pos": [ 0, 0, -1 ] },
+            { "overmap": "shoggoth_ravine_filler_ground", "pos": [ 0, 0, 0 ] },
+            { "overmap": "shoggoth_ravine_filler", "pos": [ 0, 0, -1 ] },
             { "overmap": "shoggoth_ravine_bottom", "pos": [ 0, 0, -2 ] }
           ],
           "weight": 1
@@ -232,7 +232,7 @@
         {
           "name": "ravine filler root",
           "chunk": [
-            { "overmap": "ravine_root_filler", "pos": [ 0, 0, -1 ] },
+            { "overmap": "shoggoth_ravine_root_filler", "pos": [ 0, 0, -1 ] },
             { "overmap": "shoggoth_ravine_bottom", "pos": [ 0, 0, -2 ] }
           ],
           "weight": 1
@@ -264,7 +264,7 @@
   {
     "type": "mapgen",
     "//": "z-1",
-    "om_terrain": "ravine_straight",
+    "om_terrain": "shoggoth_ravine_straight",
     "object": {
       "predecessor_mapgen": "open_air",
       "palettes": [ "shoggoth_ravine_straight_parameters" ],
@@ -274,7 +274,7 @@
   {
     "type": "mapgen",
     "//": "z-2",
-    "om_terrain": "ravine_straight_bottom",
+    "om_terrain": "shoggoth_ravine_straight_bottom",
     "object": {
       "predecessor_mapgen": "forest",
       "palettes": [ "shoggoth_ravine_straight_parameters" ],
@@ -371,7 +371,7 @@
   },
   {
     "type": "mapgen",
-    "om_terrain": "ravine_corner",
+    "om_terrain": "shoggoth_ravine_corner",
     "object": {
       "predecessor_mapgen": "open_air",
       "palettes": [ "shoggoth_ravine_corner_parameters" ],
@@ -380,7 +380,7 @@
   },
   {
     "type": "mapgen",
-    "om_terrain": "ravine_corner_bottom",
+    "om_terrain": "shoggoth_ravine_corner_bottom",
     "object": {
       "predecessor_mapgen": "mom_shoggothed_world_default",
       "palettes": [ "shoggoth_ravine_corner_parameters" ],
@@ -462,13 +462,13 @@
       "variant": {
         "type": "nested_mapgen_id",
         "scope": "omt_stack",
-        "default": { "distribution": [ "24x24_ravine_2way_v1", "24x24_shoggoth_ravine_2way_v2" ] }
+        "default": { "distribution": [ "24x24_shoggoth_ravine_2way_v1", "24x24_shoggoth_ravine_2way_v2" ] }
       }
     }
   },
   {
     "type": "mapgen",
-    "om_terrain": "ravine_2way_ground",
+    "om_terrain": "shoggoth_ravine_2way_ground",
     "object": {
       "fallback_predecessor_mapgen": "forest",
       "palettes": [ "shoggoth_ravine_2way_parameters" ],
@@ -477,7 +477,7 @@
   },
   {
     "type": "mapgen",
-    "om_terrain": "ravine_2way",
+    "om_terrain": "shoggoth_ravine_2way",
     "object": {
       "predecessor_mapgen": "open_air",
       "palettes": [ "shoggoth_ravine_2way_parameters" ],
@@ -486,7 +486,7 @@
   },
   {
     "type": "mapgen",
-    "om_terrain": "ravine_2way_bottom",
+    "om_terrain": "shoggoth_ravine_2way_bottom",
     "object": {
       "predecessor_mapgen": "forest",
       "palettes": [ "shoggoth_ravine_2way_parameters" ],
