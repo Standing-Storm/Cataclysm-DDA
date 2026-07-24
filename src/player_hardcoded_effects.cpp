@@ -1561,17 +1561,18 @@ void Character::hardcoded_effects( effect &it )
         if( !recovered ) {
             // PAUSE_INFECTIONS means you cannot die and you have plenty of time when it wears off
             // PAUSE_BODYPART_INFECTION is the same but only if it's on the same bodypart as the infection
-            const bool paused_infections = has_flag( json_flag_PAUSE_INFECTIONS );
-            bool bodypart_paused_infections = false;
-            if( bp != bodypart_str_id::NULL_ID() ) {
-                for( const effect &eff : get_effects_from_bp( bp ) ) {
-                    if( eff.has_flag( json_flag_PAUSE_BODYPART_INFECTION ) ) {
-                        bodypart_paused_infections = true;
-                        break;
+            bool paused_infections = has_flag( json_flag_PAUSE_INFECTIONS );
+            if ( !paused_infections ) {
+                if( bp != bodypart_str_id::NULL_ID() ) {
+                    for( const effect &eff : get_effects_from_bp( bp ) ) {
+                        if( eff.has_flag( json_flag_PAUSE_BODYPART_INFECTION ) ) {
+                            paused_infections = true;
+                            break;
+                        }
                     }
                 }
             }
-            if( paused_infections || bodypart_paused_infections ) {
+            if( paused_infections ) {
                 if( dur > 6_hours ) {
                     it.mod_duration( -1_turns );
                 }
