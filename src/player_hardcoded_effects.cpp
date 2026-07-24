@@ -123,6 +123,7 @@ static const json_character_flag json_flag_ALARMCLOCK( "ALARMCLOCK" );
 static const json_character_flag json_flag_BIONIC_LIMB( "BIONIC_LIMB" );
 static const json_character_flag json_flag_CANNOT_TAKE_DAMAGE( "CANNOT_TAKE_DAMAGE" );
 static const json_character_flag json_flag_PAIN_IMMUNE( "PAIN_IMMUNE" );
+static const json_character_flag json_flag_PAUSE_BODYPART_INFECTION( "PAUSE_BODYPART_INFECTION" );
 static const json_character_flag json_flag_PAUSE_INFECTIONS( "PAUSE_INFECTIONS" );
 static const json_character_flag json_flag_SEESLEEP( "SEESLEEP" );
 
@@ -1559,7 +1560,7 @@ void Character::hardcoded_effects( effect &it )
         }
         if( !recovered ) {
             // PAUSE_INFECTIONS means you cannot die and you have plenty of time when it wears off
-            if( has_flag( json_flag_PAUSE_INFECTIONS ) ) {
+            if( has_flag( json_flag_PAUSE_INFECTIONS ) || bp->has_flag( json_flag_PAUSE_BODYPART_INFECTION ) ) {
                 if( dur > 6_hours ) {
                     it.mod_duration( -1_turns );
                 }
