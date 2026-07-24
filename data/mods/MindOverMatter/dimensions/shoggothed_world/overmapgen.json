@@ -15,45 +15,5 @@
     "color": "brown",
     "see_cost": "none",
     "flags": [ "NO_ROTATE" ]
-  },
-  {
-    "type": "overmap_terrain",
-    "abstract": "generic_shoggoth_ravine",
-    "name": "ravine",
-    "sym": "V",
-    "color": "light_gray",
-    "see_cost": "full_high"
-  },
-  {
-    "type": "overmap_terrain",
-    "id": [
-      "shoggoth_ravine_2way",
-      "shoggoth_ravine_3way",
-      "shoggoth_ravine_straight",
-      "shoggoth_ravine_corner",
-      "shoggoth_ravine_2way_bottom",
-      "shoggoth_ravine_3way_bottom",
-      "shoggoth_ravine_straight_bottom",
-      "shoggoth_ravine_corner_bottom"
-    ],
-    "copy-from": "generic_shoggoth_ravine"
-  },
-  {
-    "type": "overmap_terrain",
-    "id": [
-      "shoggoth_ravine_2way_ground",
-      "shoggoth_ravine_3way_ground",
-      "shoggoth_ravine_straight_ground",
-      "shoggoth_ravine_corner_ground"
-    ],
-    "copy-from": "generic_shoggoth_ravine",
-    "see_cost": "all_clear",
-    "flags": [ "REQUIRES_PREDECESSOR" ]
-  },
-  {
-    "type": "overmap_terrain",
-    "id": "shoggoth_ravine_bottom",
-    "name": "ravine floor",
-    "copy-from": "mom_shoggothed_world_default"
   }
 ]
