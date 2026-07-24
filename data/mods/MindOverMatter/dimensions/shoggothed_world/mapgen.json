@@ -1,0 +1,37 @@
+[
+  {
+    "type": "mapgen",
+    "nested_mapgen_id": "mom_mycus_world_default",
+    "object": {
+      "mapgensize": [ 24, 24 ],
+      "rows": [
+        "                        ",
+        "           1            ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "   1                    ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        ",
+        "                        "
+      ],
+      "flags": [ "ALLOW_TERRAIN_UNDER_OTHER_DATA" ],
+      "nested": { "1": { "chunks": [ [ "null", 100 ], [ "mom_shoggothed_world_1", 1 ] ] } }
+    }
+  }
+]
