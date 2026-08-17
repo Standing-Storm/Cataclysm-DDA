@@ -204,6 +204,7 @@ static const species_id species_NETHER( "NETHER" );
 static const species_id species_PLANT( "PLANT" );
 static const species_id species_PSI_NULL( "PSI_NULL" );
 static const species_id species_ROBOT( "ROBOT" );
+static const species_id species_SUMMONED_CREATURE( "SUMMONED_CREATURE" );
 static const species_id species_ZOMBIE( "ZOMBIE" );
 static const species_id species_nether_player_hate( "nether_player_hate" );
 
@@ -1564,7 +1565,7 @@ bool monster::is_pet() const
 
 bool monster::is_pet_follow() const
 {
-    return is_pet() && !has_flag( mon_flag_PET_WONT_FOLLOW );
+    return ( is_pet() && !has_flag( mon_flag_PET_WONT_FOLLOW ) ) || ( in_species( species_SUMMONED_CREATURE ) && friendly == -1 );
 }
 
 bool monster::has_intelligence() const
