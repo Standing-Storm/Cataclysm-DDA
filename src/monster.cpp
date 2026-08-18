@@ -1565,7 +1565,7 @@ bool monster::is_pet() const
 
 bool monster::is_pet_follow() const
 {
-    return ( is_pet() && !has_flag( mon_flag_PET_WONT_FOLLOW ) ) || ( in_species( species_SUMMONED_CREATURE ) && friendly == -1 );
+    return ( is_pet() && !has_flag( mon_flag_PET_WONT_FOLLOW ) ) || ( in_species( species_SUMMONED_CREATURE ) && friendly != 0 );
 }
 
 bool monster::has_intelligence() const
