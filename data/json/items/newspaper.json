@@ -682,5 +682,14 @@
     "name": { "str": "incomplete checklist" },
     "copy-from": "file",
     "description": "A sheet of paper with a checklist titled \"TO DO BEFORE JULY RESIGNATION\":\n [X] Acquire activity suit\n [X] Acquire respirator\n [X] Shield gear against THEM\n [ ] Shield walls against THEM\n [X] Install security door\n [ ] 6 months food, water\n [X] Order appliances, panels, radio\n [ ] Install solar panels\n [X] Install radio gear\n [X] Install air purifiers\n [ ] Fix the old boat\n [ ] Buy a gun\n [ ] Finish research statement for faculty apps"
+  },
+  {
+    "type": "ITEM",
+    "id": "file_xedra_secret_document_domestic",
+    "copy-from": "file",
+    "category": "books",
+    "name": { "str": "XEDRA documents" },
+    "snippet_category": "xedra_secret_document_domestic",
+    "description": "A manilla folder containing a couple documents, each of which has the word \"XEDRA\" next to a logo of several concentric circles pierced by an arrow.  Considering that it also says \"TOP SECRET: EYES ONLY\" you really don't think they were supposed to take this home."
   }
 ]

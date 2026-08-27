@@ -1239,5 +1239,11 @@
       { "item": "european_comic", "count": [ 1, 16 ], "variant": "dungeon", "prob": 1 },
       { "item": "european_comic", "count": [ 1, 8 ], "variant": "metabarons", "prob": 1 }
     ]
+  },
+  {
+    "type": "item_group",
+    "id": "domestic_house_xedra_documents_filter",
+    "subtype": "distribution",
+    "items": [ { "item": "null", "prob": 25000, "count": 1 }, { "item": "file_xedra_secret_document_domestic", "prob": 1 } ]
   }
 ]
