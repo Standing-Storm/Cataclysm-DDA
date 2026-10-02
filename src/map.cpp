@@ -10924,6 +10924,20 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
     }
 }
 
+void map::rebuild_vision_caches_from_scratch( const int zlev )
+{
+    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+        invalidate_map_cache( z );
+        get_cache( z ).vision_observer_overrides.clear();
+    }
+    skew_vision_cache.clear();
+    skew_vision_wo_fields_cache.clear();
+    g->reset_light_level();
+    build_map_cache( zlev );
+    invalidate_visibility_cache();
+    update_visibility_cache( zlev );
+}
+
 //////////
 ///// coordinate helpers
 

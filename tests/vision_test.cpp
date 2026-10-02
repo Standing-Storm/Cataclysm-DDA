@@ -1200,6 +1200,10 @@ static void set_up_transition_scene( const tripoint_bub_ms &origin )
     clear_avatar();
     clear_map_without_vision( -2, OVERMAP_HEIGHT );
     g->place_player( origin );
+    // placing the avatar can load submaps with their own monsters, and safe
+    // mode would stop these tests' moves
+    clear_creatures();
+    g->set_safe_mode( SAFE_MODE_OFF );
     calendar::turn = day_time;
     g->reset_light_level();
 }
@@ -1351,6 +1355,86 @@ TEST_CASE( "vision_translucent_tile_blocks_again_after_avatar_leaves", "[vision]
     REQUIRE( get_avatar().pos_bub() == window + tripoint::north );
     build_vision_caches_incrementally();
     CHECK( cache.vision_transparency_cache[window.xy()] == LIGHT_TRANSPARENCY_SOLID );
+}
+
+TEST_CASE( "vision_cache_transitions_match_rebuild", "[vision]" )
+{
+    // inside center submap, so one step doesn't shift the map
+    const tripoint_bub_ms origin{ 64, 64, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    here.ter_set( origin + tripoint_rel_ms{ 0, 2, 0 }, ter_t_window_frame );
+    here.ter_set( origin + tripoint_rel_ms{ 3, 2, 0 }, ter_t_window_frame );
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+
+    SECTION( "step" ) {
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        REQUIRE( avatar_action::move( you, here, tripoint_rel_ms::east ) );
+    }
+    SECTION( "cross_a_submap_edge_then_one_more_step" ) {
+        // 71 is east column of center submap
+        g->place_player( { 71, 64, 0 } );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        REQUIRE( avatar_action::move( you, here, tripoint_rel_ms::east ) );
+        REQUIRE( avatar_action::move( you, here, tripoint_rel_ms::east ) );
+    }
+    SECTION( "crouched_teleport_within_a_submap" ) {
+        you.set_movement_mode( move_mode_crouch );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        REQUIRE( teleport::teleport_to_point( you, origin + tripoint_rel_ms{ 3, 1, 0 }, true, false,
+                                              false ) );
+    }
+    SECTION( "crouched_walk" ) {
+        you.set_movement_mode( move_mode_crouch );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        for( int step = 0; step < 3; ++step ) {
+            REQUIRE( avatar_action::move( you, here, tripoint_rel_ms::east ) );
+        }
+    }
+    build_vision_caches_incrementally();
+    oracle.check_matches_rebuild();
+}
+
+TEST_CASE( "vision_caches_of_a_freshly_loaded_map_match_the_saved_scene", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    build_transition_room( origin );
+    map &here = get_map();
+    GIVEN( "a settled view out of a window" ) {
+        const tripoint_bub_ms window = origin + tripoint::east;
+        const tripoint_bub_ms target = window + tripoint::east;
+        here.ter_set( window, ter_t_window_frame );
+        settle_vision_caches();
+        const float expected_seen = here.access_cache( 0 ).seen_cache[target.xy()];
+        const lit_level expected_visibility = here.access_cache( 0 ).visibility_cache[target.xy()];
+        REQUIRE( expected_seen > 0.0f );
+        WHEN( "map is saved and loaded into a fresh map" ) {
+            const tripoint_abs_sm saved_origin = here.get_abs_sub();
+            here.save();
+            here = map();
+            here.load( saved_origin, false, false );
+            build_vision_caches_incrementally();
+            THEN( "the view is the one it saved" ) {
+                CHECK( here.access_cache( 0 ).seen_cache[target.xy()] == Approx( expected_seen ) );
+                CHECK( here.access_cache( 0 ).visibility_cache[target.xy()] == expected_visibility );
+            }
+        }
+    }
+}
+
+TEST_CASE( "vision_cache_stationary_build_is_noop", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 64, 64, 0 };
+    set_up_transition_scene( origin );
+    build_transition_room( origin );
+    get_map().rebuild_vision_caches_from_scratch( 0 );
+    check_stationary_build_is_noop();
 }
 
 TEST_CASE( "pl_sees-oob-nocrash", "[vision]" )
