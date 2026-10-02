@@ -45,10 +45,12 @@ struct level_cache_default_zero_members {
     // "inside" tiles are protected from sun, rain, etc. (see ter_furn_flag::TFLAG_INDOORS flag)
     cata::mdarray<bool, point_bub_ms> outside_cache;
 
-    // true when vehicle below has "ROOF" or "OPAQUE" part, furniture below has ter_furn_flag::TFLAG_SUN_ROOF_ABOVE
-    //      or terrain doesn't have ter_furn_flag::TFLAG_NO_FLOOR flag
-    // false otherwise
-    // i.e. true == has floor
+    // false where this level's terrain has a floor gap flag (see has_floor_gap_flag:
+    //      NO_FLOOR, NO_FLOOR_WATER, GOES_DOWN, TRANSPARENT_FLOOR), unless furniture
+    //      below has ter_furn_flag::TFLAG_SUN_ROOF_ABOVE
+    // true otherwise, and where a boardable vehicle part on this level or a ROOF or
+    //      OPAQUE part below closes the gap
+    // sight and sunlight cross between this level and the one below only where false
     cata::mdarray<bool, point_bub_ms> floor_cache;
 
     // stores cached transparency of the tiles
@@ -61,8 +63,20 @@ struct level_cache_default_zero_members {
     // true, if tile is not opaque
     std::array<std::bitset<MAPSIZE_Y>, MAPSIZE_X> transparent_cache_wo_fields;
 
+    // sight through the tiles for every observer: transparency_cache, but solid
+    // where TRANSLUCENT terrain or furniture passes light and blocks sight
+    cata::mdarray<float, point_bub_ms> sight_cache;
+    // sight_cache without fields as a bitset; true when sight passes
+    std::array<std::bitset<MAPSIZE_Y>, MAPSIZE_X> sight_cache_wo_fields;
+    // tiles an opaque vehicle part covers, rewritten every build
+    cata::mdarray<bool, point_bub_ms> vehicle_opaque_cache;
+    // outside_cache and vehicle_opaque_cache as transparency build last read
+    // them; a difference marks the submaps it covers dirty
+    cata::mdarray<bool, point_bub_ms> transparency_outside;
+    cata::mdarray<bool, point_bub_ms> transparency_vehicle_opaque;
+
     // stores "adjusted transparency" of the tiles
-    // initial values derived from transparency_cache, uses same units
+    // initial values derived from sight_cache, uses same units
     // examples of adjustment: changed transparency on player's tile and special case for crouching
     cata::mdarray<float, point_bub_ms> vision_transparency_cache;
 
@@ -96,6 +110,14 @@ struct level_cache : level_cache_default_zero_members {
         // cells of vision_transparency_cache the observer overlay last wrote,
         // with the value; they go back to scene value when overlay moves
         std::vector<std::pair<point_bub_ms, float>> vision_observer_overrides;
+        // weather sight penalty transparency build last applied
+        float built_sight_penalty = -1.0f;
+        // set from next_cache_generation when a value in the four transparency
+        // and sight caches changes
+        uint64_t sight_revision = 0;
+        // set from next_cache_generation when terrain, furniture, floors or
+        // vehicle parts on this level change; ledges and vertical sight read them
+        uint64_t geometry_revision = 0;
         bool outside_cache_dirty = false;
         bool floor_cache_dirty = false;
         bool seen_cache_dirty = false;

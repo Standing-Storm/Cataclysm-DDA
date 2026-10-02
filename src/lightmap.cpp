@@ -9,7 +9,6 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -19,6 +18,7 @@
 #include "cata_utility.h"
 #include "character.h"
 #include "colony.h"
+#include "creature_tracker.h"
 #include "cuboid_rectangle.h"
 #include "debug.h"
 #include "field.h"
@@ -153,119 +153,138 @@ void map::add_light_from_items( const tripoint_bub_ms &p, const item_stack &item
     }
 }
 
+// TRANSLUCENT terrain or furniture passes light but blocks sight
+static bool blocks_sight( const ter_t &ter, const furn_t &furn )
+{
+    return ter.has_flag( ter_furn_flag::TFLAG_TRANSLUCENT ) ||
+           furn.has_flag( ter_furn_flag::TFLAG_TRANSLUCENT );
+}
+
+// marks dirty the submaps where an input of the transparency build differs from
+// the copy it last read
+static void mark_changed_submaps_dirty( level_cache &map_cache,
+                                        const cata::mdarray<bool, point_bub_ms> &input,
+                                        const cata::mdarray<bool, point_bub_ms> &consumed, const int map_size )
+{
+    if( std::memcmp( &input, &consumed, sizeof( input ) ) == 0 ) {
+        return;
+    }
+    for( int smx = 0; smx < map_size; ++smx ) {
+        for( int smy = 0; smy < map_size; ++smy ) {
+            for( int sx = 0; sx < SEEX; ++sx ) {
+                const int x = sx + smx * SEEX;
+                if( !std::equal( &input[x][smy * SEEY], &input[x][smy * SEEY] + SEEY,
+                                 &consumed[x][smy * SEEY] ) ) {
+                    map_cache.transparency_cache_dirty.set( smx * MAPSIZE + smy );
+                    break;
+                }
+            }
+        }
+    }
+}
+
 // TODO: Consider making this just clear the cache and dynamically fill it in as is_transparent() is called
 bool map::build_transparency_cache( const int zlev )
 {
     level_cache &map_cache = get_cache( zlev );
     auto &transparent_cache_wo_fields = map_cache.transparent_cache_wo_fields;
     auto &transparency_cache = map_cache.transparency_cache;
-    auto &outside_cache = map_cache.outside_cache;
+    auto &sight_cache = map_cache.sight_cache;
+    auto &sight_cache_wo_fields = map_cache.sight_cache_wo_fields;
+    const auto &outside_cache = map_cache.outside_cache;
+
+    const cata::mdarray<bool, point_bub_ms> &vehicle_opaque = map_cache.vehicle_opaque_cache;
+
+    // weather, shelter and vehicles are inputs too but nothing marks them dirty,
+    // so compare with what last build read
+    const float sight_penalty = get_weather().weather_id->sight_penalty;
+    if( sight_penalty != map_cache.built_sight_penalty ) {
+        map_cache.transparency_cache_dirty.set();
+    } else {
+        mark_changed_submaps_dirty( map_cache, outside_cache, map_cache.transparency_outside,
+                                    my_MAPSIZE );
+        mark_changed_submaps_dirty( map_cache, vehicle_opaque, map_cache.transparency_vehicle_opaque,
+                                    my_MAPSIZE );
+    }
 
     if( map_cache.transparency_cache_dirty.none() ) {
         return false;
     }
 
-    // if true, all submaps are invalid (can use batch init)
-    bool rebuild_all = map_cache.transparency_cache_dirty.all();
-
-    if( rebuild_all ) {
-        // Default to just barely not transparent.
-        std::uninitialized_fill_n( &transparency_cache[0][0], MAPSIZE_X * MAPSIZE_Y,
-                                   static_cast<float>( LIGHT_TRANSPARENCY_OPEN_AIR ) );
-        for( auto &row : transparent_cache_wo_fields ) {
-            row.set(); // true means transparent
-        }
-    }
-
-    const float sight_penalty = get_weather().weather_id->sight_penalty;
+    // compared whole after the pass: a per-tile check costs every tile of a
+    // weather rebuild, and weather never changes this array
+    const std::array<std::bitset<MAPSIZE_Y>, MAPSIZE_X> wo_fields_before = transparent_cache_wo_fields;
+    bool changed = false;
+    const auto write = [&]( const point_bub_ms & p, const float light, const bool light_wo_fields,
+    const float sight, const bool sight_wo_fields ) {
+        changed |= transparency_cache[p.x()][p.y()] != light ||
+                   transparent_cache_wo_fields[p.x()][p.y()] != light_wo_fields ||
+                   sight_cache[p.x()][p.y()] != sight ||
+                   sight_cache_wo_fields[p.x()][p.y()] != sight_wo_fields;
+        transparency_cache[p.x()][p.y()] = light;
+        transparent_cache_wo_fields[p.x()][p.y()] = light_wo_fields;
+        sight_cache[p.x()][p.y()] = sight;
+        sight_cache_wo_fields[p.x()][p.y()] = sight_wo_fields;
+    };
 
     // Traverse the submaps in order
     for( int smx = 0; smx < my_MAPSIZE; ++smx ) {
         for( int smy = 0; smy < my_MAPSIZE; ++smy ) {
+            if( !map_cache.transparency_cache_dirty[smx * MAPSIZE + smy] ) {
+                continue;
+            }
             const submap *cur_submap = get_submap_at_grid( tripoint_rel_sm{smx, smy, zlev} );
             if( cur_submap == nullptr ) {
                 debugmsg( "Tried to build transparency cache at (%d,%d,%d) but the submap is not loaded", smx, smy,
                           zlev );
                 continue;
             }
-
-            const point_bub_ms sm_offset = coords::project_to<coords::ms>( point_bub_sm( smx, smy ) );
-
-            if( !rebuild_all && !map_cache.transparency_cache_dirty[smx * MAPSIZE + smy] ) {
-                continue;
-            }
-
-            // calculates transparency of a single tile
-            // x,y - coords in map local coords
-            auto calc_transp = [&]( const point_bub_ms & p ) {
-                const point_sm_ms sp = rebase_sm( p - sm_offset );
-                float value = LIGHT_TRANSPARENCY_OPEN_AIR;
-
-                if( !( cur_submap->get_ter( sp ).obj().transparent &&
-                       cur_submap->get_furn( sp ).obj().transparent ) ) {
-                    return std::make_pair( LIGHT_TRANSPARENCY_SOLID, LIGHT_TRANSPARENCY_SOLID );
-                }
-                if( outside_cache[p.x()][p.y()] ) {
-                    // FIXME: Places inside vehicles haven't been marked as
-                    // inside yet so this is incorrectly penalising for
-                    // weather in vehicles.
-                    value *= sight_penalty;
-                }
-                float value_wo_fields = value;
-                for( const auto &fld : cur_submap->get_field( sp ) ) {
-                    const field_intensity_level &i_level = fld.second.get_intensity_level();
-                    if( i_level.transparent ) {
+            for( int sx = 0; sx < SEEX; ++sx ) {
+                for( int sy = 0; sy < SEEY; ++sy ) {
+                    const point_sm_ms sp( sx, sy );
+                    const point_bub_ms p( sx + smx * SEEX, sy + smy * SEEY );
+                    const ter_t &ter = cur_submap->get_ter( sp ).obj();
+                    const furn_t &furn = cur_submap->get_furn( sp ).obj();
+                    if( vehicle_opaque[p.x()][p.y()] || !( ter.transparent && furn.transparent ) ) {
+                        write( p, LIGHT_TRANSPARENCY_SOLID, false, LIGHT_TRANSPARENCY_SOLID, false );
                         continue;
                     }
-                    // Fields are either transparent or not, however we want some to be translucent
-                    value = value * i_level.translucency;
-                }
-                // TODO: [lightmap] Have glass reduce light as well.
-                // Note, binary transluceny is implemented in build_vision_transparency_cache below
-                return std::make_pair( value, value_wo_fields );
-            };
-
-            if( cur_submap->is_uniform() ) {
-                float value;
-                float dummy;
-                std::tie( value, dummy ) = calc_transp( sm_offset );
-                // if rebuild_all==true all values were already set to LIGHT_TRANSPARENCY_OPEN_AIR
-                if( !rebuild_all || value != LIGHT_TRANSPARENCY_OPEN_AIR ) {
-                    bool opaque = value <= LIGHT_TRANSPARENCY_SOLID;
-                    for( int sx = 0; sx < SEEX; ++sx ) {
-                        // init all sy indices in one go
-                        std::uninitialized_fill_n( &transparency_cache[sm_offset.x() + sx][sm_offset.y()], SEEY, value );
-                        if( opaque ) {
-                            auto &bs = transparent_cache_wo_fields[sm_offset.x() + sx];
-                            for( int i = 0; i < SEEY; i++ ) {
-                                bs[sm_offset.y() + i] = false;
-                            }
+                    float value = LIGHT_TRANSPARENCY_OPEN_AIR;
+                    if( outside_cache[p.x()][p.y()] ) {
+                        value *= sight_penalty;
+                    }
+                    const float value_wo_fields = value;
+                    for( const auto &fld : cur_submap->get_field( sp ) ) {
+                        const field_intensity_level &i_level = fld.second.get_intensity_level();
+                        if( i_level.transparent ) {
+                            continue;
                         }
+                        // Fields are either transparent or not, however we want some to be translucent
+                        value = value * i_level.translucency;
                     }
-                }
-            } else {
-                for( int sx = 0; sx < SEEX; ++sx ) {
-                    const int x = sx + sm_offset.x();
-                    for( int sy = 0; sy < SEEY; ++sy ) {
-                        const int y = sy + sm_offset.y();
-                        float transp_wo_fields;
-                        std::tie( transparency_cache[x][y], transp_wo_fields ) = calc_transp( {x, y } );
-                        transparent_cache_wo_fields[x][y] = transp_wo_fields > LIGHT_TRANSPARENCY_SOLID;
-                    }
+                    // TODO: [lightmap] Have glass reduce light as well.
+                    const bool sight_blocked = blocks_sight( ter, furn );
+                    write( p, value, value_wo_fields > LIGHT_TRANSPARENCY_SOLID,
+                           sight_blocked ? LIGHT_TRANSPARENCY_SOLID : value,
+                           !sight_blocked && value_wo_fields > LIGHT_TRANSPARENCY_SOLID );
                 }
             }
         }
     }
-    //build_vision_transparency_cache copies the transparency_cache so don't reset transparency_cache_dirty until it's resolved
-    return true;
-}
 
-// sight through a tile before observer adjustment: TRANSLUCENT terrain passes
-// light, blocks sight
-static float optical_transparency( const float light_transparency, const ter_t &terrain )
-{
-    return terrain.has_flag( ter_furn_flag::TFLAG_TRANSLUCENT ) ? LIGHT_TRANSPARENCY_SOLID :
-           light_transparency;
+    map_cache.transparency_outside = outside_cache;
+    map_cache.transparency_vehicle_opaque = vehicle_opaque;
+    map_cache.built_sight_penalty = sight_penalty;
+    if( changed ) {
+        map_cache.sight_revision = next_cache_generation();
+    }
+    // creature zones flood through tiles clear without fields, and vehicle
+    // doors change them with no tile write
+    if( transparent_cache_wo_fields != wo_fields_before && this == &reality_bubble() ) {
+        get_creature_tracker().invalidate_reachability_cache();
+    }
+    // build_vision_transparency_cache copies sight_cache from the same dirty submaps and resets them
+    return changed;
 }
 
 std::vector<std::pair<point_bub_ms, float>> map::observer_vision_overrides( const int zlev ) const
@@ -301,7 +320,7 @@ std::vector<std::pair<point_bub_ms, float>> map::observer_vision_overrides( cons
 bool map::build_vision_transparency_cache( int zlev )
 {
     level_cache &map_cache = get_cache( zlev );
-    const cata::mdarray<float, point_bub_ms> &transparency_cache = map_cache.transparency_cache;
+    const cata::mdarray<float, point_bub_ms> &sight_cache = map_cache.sight_cache;
     cata::mdarray<float, point_bub_ms> &vision_transparency_cache = map_cache.vision_transparency_cache;
     std::vector<std::pair<point_bub_ms, float>> &applied = map_cache.vision_observer_overrides;
     std::vector<std::pair<point_bub_ms, float>> wanted = observer_vision_overrides( zlev );
@@ -322,45 +341,29 @@ bool map::build_vision_transparency_cache( int zlev )
     remember( applied );
     remember( wanted );
 
-    bool dirty = false;
-    if( scene_dirty ) {
-        // TODO: Should only copy if transparency_cache was dirty
-        memcpy( &vision_transparency_cache, &transparency_cache, sizeof( transparency_cache ) );
+    // last overlay comes off first, so the copy below compares scene with scene
+    for( const std::pair<point_bub_ms, float> &cell : applied ) {
+        const point_bub_ms &p = cell.first;
+        vision_transparency_cache[p.x()][p.y()] = sight_cache[p.x()][p.y()];
+    }
 
-        // This segment handles blocking vision through TRANSLUCENT flagged terrain.
-        // Traverse the submaps in order (else map::ter() calls get_submap each time)
-        for( int smx = 0; smx < my_MAPSIZE; ++smx ) {
-            for( int smy = 0; smy < my_MAPSIZE; ++smy ) {
-                const submap *cur_submap = get_submap_at_grid( tripoint_rel_sm{smx, smy, zlev} );
-                if( cur_submap == nullptr ) {
-                    debugmsg( "Tried to build transparency cache at (%d,%d,%d) but the submap is not loaded", smx, smy,
-                              zlev );
-                    continue;
-                }
-                if( !map_cache.transparency_cache_dirty[smx * MAPSIZE + smy] ) {
-                    continue;
-                }
-                for( int smi = 0; smi < SEEX; smi++ ) {
-                    for( int smj = 0; smj < SEEY; smj++ ) {
-                        const int i = smi + ( smx * SEEX );
-                        const int j = smj + ( smy * SEEY );
-                        const float optical = optical_transparency( vision_transparency_cache[i][j],
-                                              cur_submap->get_ter( point_sm_ms{smi, smj} ).obj() );
-                        dirty |= vision_transparency_cache[i][j] != optical;
-                        vision_transparency_cache[i][j] = optical;
-                    }
+    bool dirty = false;
+    for( int smx = 0; smx < my_MAPSIZE; ++smx ) {
+        for( int smy = 0; smy < my_MAPSIZE; ++smy ) {
+            if( !map_cache.transparency_cache_dirty[smx * MAPSIZE + smy] ) {
+                continue;
+            }
+            for( int sx = 0; sx < SEEX; ++sx ) {
+                const int x = sx + smx * SEEX;
+                for( int sy = 0; sy < SEEY; ++sy ) {
+                    const int y = sy + smy * SEEY;
+                    dirty |= vision_transparency_cache[x][y] != sight_cache[x][y];
+                    vision_transparency_cache[x][y] = sight_cache[x][y];
                 }
             }
         }
-        map_cache.transparency_cache_dirty.reset();
     }
-    // last overlay's cells get scene value back; outside dirty submaps the copy
-    // above left them light value, not optical
-    for( const std::pair<point_bub_ms, float> &cell : applied ) {
-        const point_bub_ms &p = cell.first;
-        vision_transparency_cache[p.x()][p.y()] = optical_transparency(
-                    transparency_cache[p.x()][p.y()], ter( tripoint_bub_ms( p, zlev ) ).obj() );
-    }
+    map_cache.transparency_cache_dirty.reset();
 
     for( const std::pair<point_bub_ms, float> &cell : wanted ) {
         vision_transparency_cache[cell.first.x()][cell.first.y()] = cell.second;

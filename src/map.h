@@ -494,6 +494,8 @@ class map
         void set_seen_cache_dirty( int zlevel );
         void set_outside_cache_dirty( int zlev );
         void set_floor_cache_dirty( int zlev );
+        // terrain, furniture, floors or vehicle parts on zlev changed
+        void bump_geometry_revision( int zlev );
         void set_lightmap_cache_dirty( int zlev );
         void set_lightmap_cache_dirty_below( int zlev );
         void set_pathfinding_cache_dirty( int zlev );
@@ -2064,8 +2066,8 @@ class map
         void copy_grid( const tripoint_rel_sm &to, const tripoint_rel_sm &from );
         void draw_map( mapgendata &dat );
 
-        // Builds a transparency cache and returns true if the cache was invalidated.
-        // Used to determine if seen cache should be rebuilt.
+        // Builds the transparency and sight caches of dirty submaps and returns
+        // true if any value changed.
         bool build_transparency_cache( int zlev );
         bool build_vision_transparency_cache( int zlev );
         // cells the avatar's position and posture override in
@@ -2351,6 +2353,8 @@ class map
 
         visibility_variables visibility_variables_cache;
         uint64_t seen_cache_generation = 0;
+        // sight and geometry revisions of each level as last avatar cast saw them
+        std::array<std::pair<uint64_t, uint64_t>, OVERMAP_LAYERS> fov_scene_revisions = {};
 
         // caches the highest zlevel above which all zlevels are uniform
         // !value || value->first != map::abs_sub means cache is invalid

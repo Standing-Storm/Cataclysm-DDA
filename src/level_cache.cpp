@@ -35,6 +35,9 @@ void level_cache::clear()
     map_memory_sweep_pending = true;
     has_colored_lights = false;
     vision_observer_overrides.clear();
+    built_sight_penalty = -1.0f;
+    sight_revision = next_cache_generation();
+    geometry_revision = next_cache_generation();
     no_floor_gaps = false;
 
     natural_light_level_cache = 0.0f;

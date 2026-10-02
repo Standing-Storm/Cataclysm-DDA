@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -14,6 +15,7 @@
 #include "character.h"
 #include "coordinates.h"
 #include "creature.h"
+#include "creature_tracker.h"
 #include "enums.h"
 #include "game.h"
 #include "level_cache.h"
@@ -44,6 +46,8 @@ static const efftype_id effect_narcosis( "narcosis" );
 
 static const field_type_str_id field_fd_smoke( "fd_smoke" );
 
+static const furn_str_id furn_test_f_translucent( "test_f_translucent" );
+
 static const move_mode_id move_mode_crouch( "crouch" );
 static const move_mode_id move_mode_walk( "walk" );
 
@@ -52,18 +56,28 @@ static const mtype_id mon_zombie( "mon_zombie" );
 static const mtype_id mon_zombie_electric( "mon_zombie_electric" );
 
 static const ter_str_id ter_t_brick_wall( "t_brick_wall" );
+static const ter_str_id ter_t_curtains( "t_curtains" );
+static const ter_str_id ter_t_door_c( "t_door_c" );
+static const ter_str_id ter_t_door_glass_frosted_c( "t_door_glass_frosted_c" );
 static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_floor( "t_floor" );
+static const ter_str_id ter_t_grass( "t_grass" );
 static const ter_str_id ter_t_utility_light( "t_utility_light" );
+static const ter_str_id ter_t_window_domestic( "t_window_domestic" );
 static const ter_str_id ter_t_window_frame( "t_window_frame" );
 static const ter_str_id ter_t_window_stained_green( "t_window_stained_green" );
 
 static const trait_id trait_MYOPIC( "MYOPIC" );
 
+static const vpart_id vpart_door_opaque( "door_opaque" );
+static const vpart_id vpart_frame( "frame" );
 static const vpart_id vpart_inboard_mirror( "inboard_mirror" );
+
 static const vproto_id vehicle_prototype_meth_lab( "meth_lab" );
+static const vproto_id vehicle_prototype_none( "none" );
 static const vproto_id vehicle_prototype_vehicle_camera_test( "vehicle_camera_test" );
 
+static const weather_type_id weather_clear( "clear" );
 static const weather_type_id weather_fog( "fog" );
 
 static int get_actual_light_level( const map_test_case::tile &t )
@@ -1398,6 +1412,137 @@ TEST_CASE( "vision_cache_transitions_match_rebuild", "[vision]" )
     }
     build_vision_caches_incrementally();
     oracle.check_matches_rebuild();
+}
+
+TEST_CASE( "vision_cache_scene_transitions_match_rebuild", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+
+    SECTION( "unrelated_opening" ) {
+        // blocker and opening are in different submaps, so opening the door
+        // rebuilds only the door's submap
+        build_transition_room( origin );
+        const tripoint_bub_ms blocker = origin + tripoint::south;
+        const tripoint_bub_ms opening = origin + tripoint::north;
+        const ter_str_id blocker_ter = GENERATE( ter_t_window_stained_green,
+                                       ter_t_door_glass_frosted_c );
+        const ter_str_id opening_ter = GENERATE( ter_t_door_c, ter_t_curtains, ter_t_window_domestic );
+        CAPTURE( blocker_ter, opening_ter );
+        here.ter_set( blocker, blocker_ter );
+        here.ter_set( opening, opening_ter );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        REQUIRE( here.open_door( you, opening, true ) );
+        build_vision_caches_incrementally();
+        oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+    }
+    SECTION( "weather_turns_to_fog" ) {
+        build_transition_room( origin );
+        here.ter_set( origin + tripoint::east, ter_t_window_frame );
+        scoped_weather_override clear( weather_clear );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const tripoint_bub_ms outside = origin + tripoint_rel_ms{ 3, 0, 0 };
+        const float clear_transparency = here.access_cache( 0 ).transparency_cache[outside.xy()];
+        oracle.prime();
+        scoped_weather_override fog( weather_fog );
+        build_vision_caches_incrementally();
+        REQUIRE( here.access_cache( 0 ).transparency_cache[outside.xy()] != clear_transparency );
+        oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+    }
+    SECTION( "shelter_turns_to_open_ground_in_fog" ) {
+        scoped_weather_override fog( weather_fog );
+        here.ter_set( origin, ter_t_floor );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        REQUIRE_FALSE( here.access_cache( 0 ).outside_cache[( origin + tripoint::east ).xy()] );
+        oracle.prime();
+        here.ter_set( origin, ter_t_grass );
+        build_vision_caches_incrementally();
+        oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+    }
+}
+
+TEST_CASE( "vision_translucent_furniture_blocks_sight_but_not_light", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    const tripoint_bub_ms partition = origin + tripoint::south;
+    const tripoint_bub_ms beyond = partition + tripoint::south;
+    here.furn_set( partition, furn_test_f_translucent );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    const level_cache &cache = here.access_cache( 0 );
+    CHECK( cache.transparency_cache[partition.xy()] > LIGHT_TRANSPARENCY_SOLID );
+    CHECK( cache.sight_cache[partition.xy()] == LIGHT_TRANSPARENCY_SOLID );
+    CHECK( cache.seen_cache[beyond.xy()] == 0.0f );
+}
+
+TEST_CASE( "vision_physical_wo_fields_keeps_vehicle_walls", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    vehicle *v = here.add_vehicle( vehicle_prototype_meth_lab, origin + tripoint_rel_ms{ 10, 0, 0 },
+                                   0_degrees, 0, veh_spawn_status::UNDAMAGED );
+    REQUIRE( v != nullptr );
+    for( const vpart_reference &vp : v->get_avail_parts( "OPENABLE" ) ) {
+        v->close( here, vp.part_index() );
+    }
+    here.rebuild_vision_caches_from_scratch( 0 );
+    int walls = 0;
+    for( const vpart_reference &vp : v->get_avail_parts( "OPAQUE" ) ) {
+        const tripoint_bub_ms p = vp.pos_bub( here );
+        if( !here.is_transparent( p ) ) {
+            ++walls;
+            CAPTURE( p );
+            CHECK_FALSE( here.is_transparent_wo_fields( p ) );
+        }
+    }
+    REQUIRE( walls > 0 );
+    clear_vehicles();
+}
+
+TEST_CASE( "vision_vehicle_door_opening_refreshes_reachable_zones", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    // corridor west to east through origin, walled and roofed
+    for( const tripoint_bub_ms &p : here.points_in_radius( origin, 2 ) ) {
+        const bool corridor = p.y() == origin.y() && std::abs( p.x() - origin.x() ) <= 1;
+        here.ter_set( p, corridor ? ter_t_floor : ter_t_brick_wall );
+        here.ter_set( p + tripoint::above, ter_t_flat_roof );
+    }
+    vehicle *v = here.add_vehicle( vehicle_prototype_none, origin, 0_degrees, 0,
+                                   veh_spawn_status::UNDAMAGED );
+    REQUIRE( v != nullptr );
+    REQUIRE( v->install_part( here, point_rel_ms::zero, vpart_frame ) >= 0 );
+    const int door = v->install_part( here, point_rel_ms::zero, vpart_door_opaque );
+    REQUIRE( door >= 0 );
+    v->close( here, door );
+    here.rebuild_vehicle_level_caches();
+    monster *const west = g->place_critter_at( mon_zombie, origin + tripoint::west );
+    monster *const east = g->place_critter_at( mon_zombie, origin + tripoint::east );
+    REQUIRE( west != nullptr );
+    REQUIRE( east != nullptr );
+    creature_tracker &creatures = get_creature_tracker();
+    const auto find_east = [&]() {
+        return creatures.find_reachable( *west, [east]( Creature * c ) {
+            return c == east;
+        } );
+    };
+    here.build_map_cache( 0 );
+    REQUIRE_FALSE( here.passable( origin ) );
+    REQUIRE_FALSE( here.is_transparent_wo_fields( origin ) );
+    REQUIRE( find_east() == nullptr );
+    v->open( here, door );
+    here.build_map_cache( 0 );
+    REQUIRE( here.is_transparent_wo_fields( origin ) );
+    CHECK( find_east() == east );
+    clear_vehicles();
 }
 
 TEST_CASE( "vision_caches_of_a_freshly_loaded_map_match_the_saved_scene", "[vision]" )

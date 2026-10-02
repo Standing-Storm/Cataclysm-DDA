@@ -282,6 +282,16 @@ static cata::colony<item> nulitems;          // Returned when &i_at() is asked f
 static field              nulfield;          // Returned when &field_at() is asked for an OOB value
 static level_cache        nullcache;         // Dummy cache for z-levels outside bounds
 
+// terrain opening a gap in its level's floor; floor cache and its rebuild check
+// both read this one list
+static bool has_floor_gap_flag( const ter_t &terrain )
+{
+    return terrain.has_flag( ter_furn_flag::TFLAG_NO_FLOOR ) ||
+           terrain.has_flag( ter_furn_flag::TFLAG_NO_FLOOR_WATER ) ||
+           terrain.has_flag( ter_furn_flag::TFLAG_GOES_DOWN ) ||
+           terrain.has_flag( ter_furn_flag::TFLAG_TRANSPARENT_FLOOR );
+}
+
 namespace
 {
 
@@ -393,6 +403,7 @@ void map::set_transparency_cache_dirty( const int zlev )
     if( inbounds_z( zlev ) ) {
         get_cache( zlev ).transparency_cache_dirty.set();
         set_lightmap_cache_dirty_below( zlev );
+        bump_geometry_revision( zlev );
     }
 }
 
@@ -404,6 +415,7 @@ void map::set_transparency_cache_dirty( const tripoint_bub_ms &p, bool field )
         set_lightmap_cache_dirty_below( smp.z() );
         if( !field ) {
             get_creature_tracker().invalidate_reachability_cache();
+            bump_geometry_revision( smp.z() );
         }
     }
 }
@@ -443,6 +455,14 @@ void map::set_floor_cache_dirty( const int zlev )
     if( inbounds_z( zlev ) ) {
         get_cache( zlev ).floor_cache_dirty = true;
         set_lightmap_cache_dirty_below( zlev );
+        bump_geometry_revision( zlev );
+    }
+}
+
+void map::bump_geometry_revision( const int zlev )
+{
+    if( inbounds_z( zlev ) ) {
+        get_cache( zlev ).geometry_revision = next_cache_generation();
     }
 }
 
@@ -2067,6 +2087,7 @@ bool map::furn_set( const tripoint_bub_ms &p, const furn_id &new_furniture, cons
     // Set the dirty flags
     const furn_t &old_f = old_id.obj();
     const furn_t &new_f = new_target_furniture.obj();
+    bump_geometry_revision( p.z() );
 
     bool result = true;
 
@@ -2581,6 +2602,7 @@ bool map::ter_set( const tripoint_bub_ms &p, const ter_id &new_terrain, bool avo
     // Set the dirty flags
     const ter_t &old_t = old_id.obj();
     const ter_t &new_t = new_terrain.obj();
+    bump_geometry_revision( p.z() );
 
     if( current_submap->is_open_air( l ) ) {
         const furn_id &current_furn = current_submap->get_furn( l );
@@ -2615,8 +2637,7 @@ bool map::ter_set( const tripoint_bub_ms &p, const ter_id &new_terrain, bool avo
         set_outside_cache_dirty( p.z() );
     }
 
-    if( new_t.has_flag( ter_furn_flag::TFLAG_NO_FLOOR ) != old_t.has_flag(
-            ter_furn_flag::TFLAG_NO_FLOOR ) ) {
+    if( has_floor_gap_flag( new_t ) != has_floor_gap_flag( old_t ) ) {
         set_floor_cache_dirty( p.z() );
         // It's a set, not a flag
         support_cache_dirty.insert( p );
@@ -10717,10 +10738,7 @@ bool map::build_floor_cache( const int zlev )
                 for( int sy = 0; sy < SEEY; ++sy ) {
                     point_sm_ms sp( sx, sy );
                     const ter_t &terrain = cur_submap->get_ter( sp ).obj();
-                    if( terrain.has_flag( ter_furn_flag::TFLAG_NO_FLOOR ) ||
-                        terrain.has_flag( ter_furn_flag::TFLAG_NO_FLOOR_WATER ) ||
-                        terrain.has_flag( ter_furn_flag::TFLAG_GOES_DOWN ) ||
-                        terrain.has_flag( ter_furn_flag::TFLAG_TRANSPARENT_FLOOR ) ) {
+                    if( has_floor_gap_flag( terrain ) ) {
                         if( below_submap &&
                             below_submap->get_furn( sp ).obj().has_flag( ter_furn_flag::TFLAG_SUN_ROOF_ABOVE ) ) {
                             continue;
@@ -10754,7 +10772,6 @@ static void vehicle_caching_internal( level_cache &zch, const vpart_reference &v
     map &here =
         reality_bubble();
     auto &outside_cache = zch.outside_cache;
-    auto &transparency_cache = zch.transparency_cache;
     auto &floor_cache = zch.floor_cache;
 
     const size_t part = vp.part_index();
@@ -10765,7 +10782,7 @@ static void vehicle_caching_internal( level_cache &zch, const vpart_reference &v
     if( vehicle_is_opaque ) {
         int dpart = v->part_with_feature( part, VPFLAG_OPENABLE, true );
         if( dpart < 0 || !v->part( dpart ).open ) {
-            transparency_cache[part_pos.x()][part_pos.y()] = LIGHT_TRANSPARENCY_SOLID;
+            zch.vehicle_opaque_cache[part_pos.x()][part_pos.y()] = true;
         } else {
             vehicle_is_opaque = false;
         }
@@ -10821,18 +10838,30 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
     bool camera_cache_dirty = false;
     for( int z = minz; z <= maxz; z++ ) {
         build_outside_cache( z );
-        build_transparency_cache( z );
         bool floor_cache_was_dirty = build_floor_cache( z );
         seen_cache_dirty |= floor_cache_was_dirty;
         seen_cache_dirty |= get_cache( z ).seen_cache_dirty;
+        get_cache( z ).vehicle_opaque_cache.fill( false );
     }
     // needs a separate pass as it changes the caches on neighbour z-levels (e.g. floor_cache);
     // otherwise such changes might be overwritten by main cache-building logic
     for( int z = minz; z <= maxz; z++ ) {
         do_vehicle_caching( z );
     }
+    // after vehicles, which mark their own tiles inside and opaque
+    for( int z = minz; z <= maxz; z++ ) {
+        build_transparency_cache( z );
+    }
     for( int z = minz; z <= maxz; z++ ) {
         seen_cache_dirty |= build_vision_transparency_cache( z );
+    }
+    // scene change the avatar can't see still changes what it sees past it
+    for( int z = minz; z <= maxz; z++ ) {
+        const level_cache &ch = get_cache_ref( z );
+        std::pair<uint64_t, uint64_t> &cast = fov_scene_revisions[z + OVERMAP_DEPTH];
+        const std::pair<uint64_t, uint64_t> current( ch.sight_revision, ch.geometry_revision );
+        seen_cache_dirty |= cast != current;
+        cast = current;
     }
 
     if( seen_cache_dirty ) {
