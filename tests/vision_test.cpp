@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "avatar.h"
+#include "avatar_action.h"
 #include "calendar.h"
 #include "cata_catch.h"
 #include "character.h"
@@ -15,17 +16,23 @@
 #include "creature.h"
 #include "enums.h"
 #include "game.h"
+#include "level_cache.h"
+#include "lightmap.h"
 #include "map.h"
 #include "map_helpers.h"
 #include "map_helpers_tests.h"
+#include "map_iterator.h"
 #include "map_scale_constants.h"
 #include "map_test_case.h"
+#include "mdarray.h"
 #include "monster.h"
 #include "mtype.h"
 #include "options_helpers.h"
+#include "overmap_ui.h"
 #include "player_helpers.h"
 #include "point.h"
 #include "string_formatter.h"
+#include "teleport.h"
 #include "type_id.h"
 #include "units.h"
 #include "vehicle.h"
@@ -56,6 +63,8 @@ static const trait_id trait_MYOPIC( "MYOPIC" );
 static const vpart_id vpart_inboard_mirror( "inboard_mirror" );
 static const vproto_id vehicle_prototype_meth_lab( "meth_lab" );
 static const vproto_id vehicle_prototype_vehicle_camera_test( "vehicle_camera_test" );
+
+static const weather_type_id weather_fog( "fog" );
 
 static int get_actual_light_level( const map_test_case::tile &t )
 {
@@ -1184,6 +1193,164 @@ TEST_CASE( "vision_inside_meth_lab", "[shadowcasting][vision][moncam]" )
 
     t.test_all();
     clear_vehicles();
+}
+
+static void set_up_transition_scene( const tripoint_bub_ms &origin )
+{
+    clear_avatar();
+    clear_map_without_vision( -2, OVERMAP_HEIGHT );
+    g->place_player( origin );
+    calendar::turn = day_time;
+    g->reset_light_level();
+}
+
+// brick wall ring under a roof around a floor tile at origin
+static void build_transition_room( const tripoint_bub_ms &origin )
+{
+    map &here = get_map();
+    for( const tripoint_bub_ms &p : here.points_in_radius( origin, 1 ) ) {
+        here.ter_set( p, p == origin ? ter_t_floor : ter_t_brick_wall );
+        here.ter_set( p + tripoint::above, ter_t_flat_roof );
+    }
+}
+
+static void rebuild_vision_caches()
+{
+    map &here = get_map();
+    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+        here.invalidate_map_cache( z );
+    }
+    here.build_map_cache( 0 );
+    here.invalidate_visibility_cache();
+    here.update_visibility_cache( 0 );
+}
+
+// twice, as vision_test_case does: second pass sees lighting the first built
+static void settle_vision_caches()
+{
+    rebuild_vision_caches();
+    rebuild_vision_caches();
+}
+
+static void build_vision_caches_incrementally()
+{
+    map &here = get_map();
+    here.build_map_cache( 0 );
+    here.update_visibility_cache( 0 );
+}
+
+TEST_CASE( "vision_own_tile_override_follows_avatar", "[vision]" )
+{
+    tripoint_bub_ms start;
+    int steps = 0;
+    SECTION( "within_a_submap" ) {
+        start = { 64, 64, 0 };
+        steps = 1;
+    }
+    SECTION( "across_a_submap_edge_then_one_more_step" ) {
+        // 71 is east column of center submap: first step shifts the map, second
+        // lands next to shift's landing tile
+        start = { 71, 64, 0 };
+        steps = 2;
+    }
+    CAPTURE( start, steps );
+    set_up_transition_scene( start );
+    scoped_weather_override fog( weather_fog );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    settle_vision_caches();
+    for( int step = 0; step < steps; ++step ) {
+        REQUIRE( avatar_action::move( you, here, tripoint_rel_ms::east ) );
+    }
+    build_vision_caches_incrementally();
+    const tripoint_bub_ms left_tile = you.pos_bub() + tripoint::west;
+    const tripoint_bub_ms two_behind = left_tile + tripoint::west;
+    const level_cache &cache = here.access_cache( 0 );
+    REQUIRE( cache.outside_cache[two_behind.xy()] );
+    const float left_tile_vision = cache.vision_transparency_cache[left_tile.xy()];
+    const float two_behind_seen = cache.seen_cache[two_behind.xy()];
+    rebuild_vision_caches();
+    REQUIRE( cache.vision_transparency_cache[left_tile.xy()] > LIGHT_TRANSPARENCY_OPEN_AIR );
+    CHECK( left_tile_vision == cache.vision_transparency_cache[left_tile.xy()] );
+    CHECK( two_behind_seen == Approx( cache.seen_cache[two_behind.xy()] ) );
+}
+
+TEST_CASE( "vision_crouch_cover_follows_avatar", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    const level_cache &cache = here.access_cache( 0 );
+    const tripoint_bub_ms destination = origin + tripoint_rel_ms{ 4, 0, 0 };
+    const tripoint_bub_ms old_frame = origin + tripoint::south;
+    const tripoint_bub_ms new_frame = destination + tripoint::south;
+    here.ter_set( old_frame, ter_t_window_frame );
+    here.ter_set( new_frame, ter_t_window_frame );
+    you.set_movement_mode( move_mode_crouch );
+    settle_vision_caches();
+    REQUIRE( cache.vision_transparency_cache[old_frame.xy()] == LIGHT_TRANSPARENCY_SOLID );
+    REQUIRE( cache.vision_transparency_cache[new_frame.xy()] > LIGHT_TRANSPARENCY_SOLID );
+    SECTION( "teleport" ) {
+        REQUIRE( teleport::teleport_to_point( you, destination, true, false, false ) );
+    }
+    SECTION( "walk" ) {
+        for( int step = 0; step < 4; ++step ) {
+            REQUIRE( avatar_action::move( you, here, tripoint_rel_ms::east ) );
+        }
+    }
+    REQUIRE( you.pos_bub() == destination );
+    build_vision_caches_incrementally();
+    const float incremental_old = cache.vision_transparency_cache[old_frame.xy()];
+    const float incremental_new = cache.vision_transparency_cache[new_frame.xy()];
+    rebuild_vision_caches();
+    CHECK( incremental_old == cache.vision_transparency_cache[old_frame.xy()] );
+    CHECK( incremental_new == cache.vision_transparency_cache[new_frame.xy()] );
+}
+
+TEST_CASE( "vision_posture_change_recasts_fov", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    build_transition_room( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    const level_cache &cache = here.access_cache( 0 );
+    const tripoint_bub_ms window = origin + tripoint::south;
+    const tripoint_bub_ms target = window + tripoint::south;
+    here.ter_set( window, ter_t_window_frame );
+    bool crouching = false;
+    SECTION( "crouching" ) {
+        crouching = true;
+    }
+    SECTION( "standing" ) {
+        you.set_movement_mode( move_mode_crouch );
+    }
+    CAPTURE( crouching );
+    settle_vision_caches();
+    const float before = cache.seen_cache[target.xy()];
+    you.set_movement_mode( crouching ? move_mode_crouch : move_mode_walk );
+    build_vision_caches_incrementally();
+    const float incremental_seen = cache.seen_cache[target.xy()];
+    rebuild_vision_caches();
+    REQUIRE( cache.seen_cache[target.xy()] != Approx( before ) );
+    CHECK( incremental_seen == Approx( cache.seen_cache[target.xy()] ) );
+}
+
+TEST_CASE( "vision_translucent_tile_blocks_again_after_avatar_leaves", "[vision]" )
+{
+    // inside center submap, so leaving the tile doesn't shift the map
+    const tripoint_bub_ms window{ 64, 64, 0 };
+    set_up_transition_scene( window );
+    map &here = get_map();
+    const level_cache &cache = here.access_cache( 0 );
+    here.ter_set( window, ter_t_window_stained_green );
+    settle_vision_caches();
+    REQUIRE( cache.vision_transparency_cache[window.xy()] == LIGHT_TRANSPARENCY_OPEN_AIR );
+    g->place_player( window + tripoint::north );
+    REQUIRE( get_avatar().pos_bub() == window + tripoint::north );
+    build_vision_caches_incrementally();
+    CHECK( cache.vision_transparency_cache[window.xy()] == LIGHT_TRANSPARENCY_SOLID );
 }
 
 TEST_CASE( "pl_sees-oob-nocrash", "[vision]" )

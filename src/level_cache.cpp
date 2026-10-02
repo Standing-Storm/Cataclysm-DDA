@@ -34,6 +34,7 @@ void level_cache::clear()
     // the memset above marked every memory cache bit dirty
     map_memory_sweep_pending = true;
     has_colored_lights = false;
+    vision_observer_overrides.clear();
     no_floor_gaps = false;
 
     natural_light_level_cache = 0.0f;

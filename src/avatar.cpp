@@ -1298,8 +1298,6 @@ void avatar::set_movement_mode( const move_mode_id &new_mode )
         // Enchantments based on move modes can stack inappropriately without a recalc here
         recalculate_enchantment_cache();
         // crouching affects visibility
-        //TODO: Replace with dirtying vision_transparency_cache
-        here.set_transparency_cache_dirty( pos_bub() );
         here.set_seen_cache_dirty( posz() );
         recoil = MAX_RECOIL;
     } else {

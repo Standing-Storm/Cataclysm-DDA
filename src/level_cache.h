@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "coordinates.h"
 #include "lightmap.h"
@@ -92,6 +93,9 @@ struct level_cache : level_cache_default_zero_members {
         void clear();
 
         std::bitset<MAPSIZE *MAPSIZE> transparency_cache_dirty;
+        // cells of vision_transparency_cache the observer overlay last wrote,
+        // with the value; they go back to scene value when overlay moves
+        std::vector<std::pair<point_bub_ms, float>> vision_observer_overrides;
         bool outside_cache_dirty = false;
         bool floor_cache_dirty = false;
         bool seen_cache_dirty = false;

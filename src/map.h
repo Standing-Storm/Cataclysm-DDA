@@ -2065,6 +2065,9 @@ class map
         // Used to determine if seen cache should be rebuilt.
         bool build_transparency_cache( int zlev );
         bool build_vision_transparency_cache( int zlev );
+        // cells the avatar's position and posture override in
+        // vision_transparency_cache on level zlev, with the value each takes
+        std::vector<std::pair<point_bub_ms, float>> observer_vision_overrides( int zlev ) const;
         // fills lm with sunlight. pzlev is current player's zlevel
         void build_sunlight_cache( int pzlev );
     public:
