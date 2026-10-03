@@ -1670,7 +1670,7 @@ units::temperature_delta get_heat_radiation( const tripoint_bub_ms &location )
             if( !heat_can_spread ) {
                 continue;
             }
-        } else if( !here.sees( location, dest, -1 ) ) {
+        } else if( !here.sees( location, dest, -1, true, los_trace::physical ) ) {
             continue;
         }
         // Ensure fire_dist >= 1 to avoid divide-by-zero errors.
@@ -1706,7 +1706,7 @@ int get_best_fire( const tripoint_bub_ms &location )
             if( !here.clear_path( dest, location, -1, 1, 100 ) ) {
                 continue;
             }
-        } else if( !here.sees( location, dest, -1 ) ) {
+        } else if( !here.sees( location, dest, -1, true, los_trace::physical ) ) {
             continue;
         }
         if( square_dist( dest, location ) <= 1 ) {

@@ -167,12 +167,21 @@ namespace
 {
 struct vision_cache_snapshot {
     std::map<int, std::unique_ptr<level_cache_default_zero_members>> levels;
-    std::vector<bool> sees;
-    std::vector<bool> sees_wo_fields;
+    // per pair: optical and physical trace, each with and without fields
+    std::vector<std::array<bool, 4>> sees;
     uint64_t seen_generation = 0;
     std::map<int, std::pair<uint64_t, uint64_t>> level_generations;
 };
 } // namespace
+
+static std::array<bool, 4> sees_all_traces( const map &here, const tripoint_bub_ms &from,
+        const tripoint_bub_ms &to )
+{
+    return { here.sees( from, to, -1, true, los_trace::optical ),
+             here.sees( from, to, -1, false, los_trace::optical ),
+             here.sees( from, to, -1, true, los_trace::physical ),
+             here.sees( from, to, -1, false, los_trace::physical ) };
+}
 
 static vision_cache_snapshot snapshot_vision_caches( const los_pairs &pairs )
 {
@@ -185,8 +194,7 @@ static vision_cache_snapshot snapshot_vision_caches( const los_pairs &pairs )
                                         ch.visibility_generation ) );
     }
     for( const std::pair<tripoint_bub_ms, tripoint_bub_ms> &pr : pairs ) {
-        snap.sees.push_back( here.sees( pr.first, pr.second, -1, true ) );
-        snap.sees_wo_fields.push_back( here.sees( pr.first, pr.second, -1, false ) );
+        snap.sees.push_back( sees_all_traces( here, pr.first, pr.second ) );
     }
     snap.seen_generation = here.seen_generation();
     return snap;
@@ -236,6 +244,12 @@ static void check_snapshots_match( const vision_cache_snapshot &a, const vision_
         check_layer_matches( "transparent_wo_fields", z, [&]( int i, int j ) {
             return x.transparent_cache_wo_fields[i][j] == y.transparent_cache_wo_fields[i][j];
         } );
+        check_layer_matches( "sight", z, [&]( int i, int j ) {
+            return x.sight_cache[i][j] == y.sight_cache[i][j];
+        } );
+        check_layer_matches( "sight_wo_fields", z, [&]( int i, int j ) {
+            return x.sight_cache_wo_fields[i][j] == y.sight_cache_wo_fields[i][j];
+        } );
         check_layer_matches( "vision_transparency", z, [&]( int i, int j ) {
             return x.vision_transparency_cache[i][j] == y.vision_transparency_cache[i][j];
         } );
@@ -259,7 +273,6 @@ static void check_snapshots_match( const vision_cache_snapshot &a, const vision_
         } );
     }
     CHECK( a.sees == b.sees );
-    CHECK( a.sees_wo_fields == b.sees_wo_fields );
 }
 
 vision_cache_oracle::vision_cache_oracle( los_pairs pairs ) : pairs_( std::move( pairs ) ) {}
@@ -268,8 +281,7 @@ void vision_cache_oracle::prime() const
 {
     const map &here = get_map();
     for( const std::pair<tripoint_bub_ms, tripoint_bub_ms> &pr : pairs_ ) {
-        here.sees( pr.first, pr.second, -1, true );
-        here.sees( pr.first, pr.second, -1, false );
+        sees_all_traces( here, pr.first, pr.second );
     }
 }
 

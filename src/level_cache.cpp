@@ -27,6 +27,7 @@ void level_cache::clear()
 #pragma GCC diagnostic pop
 
     transparency_cache_dirty.set();
+    vision_transparency_dirty.set();
     outside_cache_dirty = true;
     floor_cache_dirty = false;
     seen_cache_dirty = false;

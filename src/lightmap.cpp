@@ -275,15 +275,17 @@ bool map::build_transparency_cache( const int zlev )
     map_cache.transparency_outside = outside_cache;
     map_cache.transparency_vehicle_opaque = vehicle_opaque;
     map_cache.built_sight_penalty = sight_penalty;
+    map_cache.vision_transparency_dirty |= map_cache.transparency_cache_dirty;
+    map_cache.transparency_cache_dirty.reset();
     if( changed ) {
         map_cache.sight_revision = next_cache_generation();
+        last_scene_change = map_cache.sight_revision;
     }
     // creature zones flood through tiles clear without fields, and vehicle
     // doors change them with no tile write
     if( transparent_cache_wo_fields != wo_fields_before && this == &reality_bubble() ) {
         get_creature_tracker().invalidate_reachability_cache();
     }
-    // build_vision_transparency_cache copies sight_cache from the same dirty submaps and resets them
     return changed;
 }
 
@@ -325,7 +327,7 @@ bool map::build_vision_transparency_cache( int zlev )
     std::vector<std::pair<point_bub_ms, float>> &applied = map_cache.vision_observer_overrides;
     std::vector<std::pair<point_bub_ms, float>> wanted = observer_vision_overrides( zlev );
 
-    const bool scene_dirty = map_cache.transparency_cache_dirty.any();
+    const bool scene_dirty = map_cache.vision_transparency_dirty.any();
     if( !scene_dirty && wanted == applied ) {
         return false;
     }
@@ -350,7 +352,7 @@ bool map::build_vision_transparency_cache( int zlev )
     bool dirty = false;
     for( int smx = 0; smx < my_MAPSIZE; ++smx ) {
         for( int smy = 0; smy < my_MAPSIZE; ++smy ) {
-            if( !map_cache.transparency_cache_dirty[smx * MAPSIZE + smy] ) {
+            if( !map_cache.vision_transparency_dirty[smx * MAPSIZE + smy] ) {
                 continue;
             }
             for( int sx = 0; sx < SEEX; ++sx ) {
@@ -363,7 +365,7 @@ bool map::build_vision_transparency_cache( int zlev )
             }
         }
     }
-    map_cache.transparency_cache_dirty.reset();
+    map_cache.vision_transparency_dirty.reset();
 
     for( const std::pair<point_bub_ms, float> &cell : wanted ) {
         vision_transparency_cache[cell.first.x()][cell.first.y()] = cell.second;
@@ -932,6 +934,16 @@ bool map::is_transparent( const tripoint_bub_ms &p ) const
 bool map::is_transparent_wo_fields( const tripoint_bub_ms &p ) const
 {
     return get_cache_ref( p.z() ).transparent_cache_wo_fields[p.x()][p.y()];
+}
+
+bool map::is_sight_clear( const tripoint_bub_ms &p ) const
+{
+    return get_cache_ref( p.z() ).sight_cache[p.x()][p.y()] > LIGHT_TRANSPARENCY_SOLID;
+}
+
+bool map::is_sight_clear_wo_fields( const tripoint_bub_ms &p ) const
+{
+    return get_cache_ref( p.z() ).sight_cache_wo_fields[p.x()][p.y()];
 }
 
 float map::light_transparency( const tripoint_bub_ms &p ) const

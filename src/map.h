@@ -393,6 +393,14 @@ struct tile_render_info {
         : com( com ), var( var ) {}
 };
 
+// what a line between two points must pass
+enum class los_trace : int {
+    // sight: TRANSLUCENT terrain and furniture block it
+    optical,
+    // light and projectiles: TRANSLUCENT passes them
+    physical,
+};
+
 /**
  * Manage and cache data about a part of the map.
  *
@@ -714,9 +722,11 @@ class map
         // Sees:
         /**
         * Returns whether `F` sees `T` with a view range of `range`.
+        * The optical trace is blocked by TRANSLUCENT tiles; the physical trace
+        * models light and projectiles and is not.
         */
         bool sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, int range,
-                   bool with_fields = true ) const;
+                   bool with_fields = true, los_trace trace = los_trace::optical ) const;
     private:
         /**
          * Don't expose the slope adjust outside map functions.
@@ -729,7 +739,8 @@ class map
          * Set to zero if the function returns false.
         **/
         bool sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, int range, int &bresenham_slope,
-                   bool with_fields = true, bool allow_cached = true ) const;
+                   bool with_fields = true, bool allow_cached = true,
+                   los_trace trace = los_trace::optical ) const;
         point sees_cache_key( const tripoint_bub_ms &from, const tripoint_bub_ms &to ) const;
     public:
         /**
@@ -1869,10 +1880,14 @@ class map
         // Raw values for tilesets
         float ambient_light_at( const tripoint_bub_ms &p ) const;
         /**
-         * Returns whether the tile at `p` is transparent(you can look past it).
+         * Returns whether light and projectiles pass the tile at `p`.
+         * TRANSLUCENT tiles pass; for sight use is_sight_clear.
          */
         bool is_transparent( const tripoint_bub_ms &p ) const;
         bool is_transparent_wo_fields( const tripoint_bub_ms &p ) const;
+        // whether sight passes the tile for any observer; TRANSLUCENT blocks it
+        bool is_sight_clear( const tripoint_bub_ms &p ) const;
+        bool is_sight_clear_wo_fields( const tripoint_bub_ms &p ) const;
         // End of light/transparency
 
         /**
@@ -2331,8 +2346,25 @@ class map
          * Cache of coordinate pairs recently checked for visibility.
          */
         using lru_cache_t = lru_cache<point, char>;
-        mutable lru_cache_t skew_vision_cache;
-        mutable lru_cache_t skew_vision_wo_fields_cache;
+        // one per trace, with or without fields; see skew_vision_cache_for
+        mutable std::array<lru_cache_t, 4> skew_vision_caches;
+        // last_scene_change the cached answers were computed against
+        mutable uint64_t skew_vision_scene_stamp = 0;
+        lru_cache_t &skew_vision_cache_for( los_trace trace, bool with_fields ) const;
+        // set from next_cache_generation whenever a level's sight or geometry
+        // revision changes
+        uint64_t last_scene_change = 0;
+        // a writer marked outside, floor or transparency caches dirty since
+        // last scene build
+        bool scene_build_pending = true;
+        // weather sight penalty of last scene build
+        float scene_built_sight_penalty = -1.0f;
+        // outside, floor, vehicle, transparency and sight caches of every level;
+        // returns true when a floor cache was rebuilt
+        bool build_scene_caches();
+        // builds scene caches only when a writer or weather changed them, so a
+        // trace between two cache builds reads the current scene
+        void ensure_scene_caches() const;
 
         // Note: no bounds check
         level_cache &get_cache( int zlev ) const {

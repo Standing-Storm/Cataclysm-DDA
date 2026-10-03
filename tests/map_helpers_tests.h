@@ -30,8 +30,8 @@ los_pairs los_pairs_around( const tripoint_bub_ms &center, int radius );
 
 // caches vision_cache_oracle compares
 enum class vision_layers {
-    // outside, floor, transparency, vision transparency, seen and camera
-    // caches, plus pairwise sight answers
+    // outside, floor, transparency, sight, vision transparency, seen and
+    // camera caches, plus pairwise sight answers on both traces
     scene_and_fov,
     // also light and final visibility classification on avatar's level
     all,

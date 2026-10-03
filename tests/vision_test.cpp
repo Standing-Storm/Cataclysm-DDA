@@ -44,6 +44,7 @@
 
 static const efftype_id effect_narcosis( "narcosis" );
 
+static const field_type_str_id field_fd_fire( "fd_fire" );
 static const field_type_str_id field_fd_smoke( "fd_smoke" );
 
 static const furn_str_id furn_test_f_translucent( "test_f_translucent" );
@@ -59,6 +60,7 @@ static const ter_str_id ter_t_brick_wall( "t_brick_wall" );
 static const ter_str_id ter_t_curtains( "t_curtains" );
 static const ter_str_id ter_t_door_c( "t_door_c" );
 static const ter_str_id ter_t_door_glass_frosted_c( "t_door_glass_frosted_c" );
+static const ter_str_id ter_t_door_o( "t_door_o" );
 static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_floor( "t_floor" );
 static const ter_str_id ter_t_grass( "t_grass" );
@@ -1543,6 +1545,131 @@ TEST_CASE( "vision_vehicle_door_opening_refreshes_reachable_zones", "[vision]" )
     REQUIRE( here.is_transparent_wo_fields( origin ) );
     CHECK( find_east() == east );
     clear_vehicles();
+}
+
+TEST_CASE( "vision_optical_los_respects_translucent_terrain", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    build_transition_room( origin );
+    map &here = get_map();
+    const ter_str_id blocker = GENERATE( ter_t_window_stained_green, ter_t_door_glass_frosted_c );
+    CAPTURE( blocker );
+    const tripoint_bub_ms window = origin + tripoint::south;
+    const tripoint_bub_ms target = window + tripoint::south;
+    here.ter_set( window, blocker );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    REQUIRE( here.access_cache( 0 ).seen_cache[target.xy()] == 0.0f );
+    const monster observer( mon_zombie, origin );
+    CHECK_FALSE( observer.sees( here, target ) );
+    CHECK_FALSE( here.sees( origin, target, 10 ) );
+    CHECK( here.sees( origin, target, 10, true, los_trace::physical ) );
+    // projectiles keep the physical trace, so a shot still lines up through it
+    const std::vector<tripoint_bub_ms> path = here.find_clear_path( origin, target, true );
+    REQUIRE_FALSE( path.empty() );
+    CHECK( path.back() == target );
+}
+
+TEST_CASE( "vision_heat_radiation_passes_translucent_partitions", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    // away from the avatar, whose own heat check walks the line
+    const tripoint_bub_ms location = origin + tripoint_rel_ms{ 4, 0, 0 };
+    const tripoint_bub_ms partition = location + tripoint::east;
+    const tripoint_bub_ms fire = partition + tripoint::east;
+    REQUIRE( here.add_field( fire, field_fd_fire, 3 ) );
+    const bool furniture = GENERATE( false, true );
+    CAPTURE( furniture );
+    if( furniture ) {
+        here.furn_set( partition, furn_test_f_translucent );
+    } else {
+        here.ter_set( partition, ter_t_window_stained_green );
+    }
+    here.build_map_cache( 0 );
+    REQUIRE_FALSE( here.sees( location, fire, 6 ) );
+    const units::temperature_delta screened = get_heat_radiation( location );
+    here.furn_set( partition, furn_str_id::NULL_ID() );
+    here.ter_set( partition, ter_t_grass );
+    here.build_map_cache( 0 );
+    const units::temperature_delta open = get_heat_radiation( location );
+    REQUIRE( units::to_fahrenheit_delta( open ) > 0.0f );
+    CHECK( units::to_fahrenheit_delta( screened ) == Approx( units::to_fahrenheit_delta( open ) ) );
+}
+
+TEST_CASE( "vision_pairwise_los_follows_offscreen_doors", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    build_transition_room( origin );
+    map &here = get_map();
+    const tripoint_bub_ms door{ 80, 80, 0 };
+    const tripoint_bub_ms from = door + tripoint::west;
+    const tripoint_bub_ms to = door + tripoint::east;
+    const bool initially_open = GENERATE( false, true );
+    CAPTURE( initially_open );
+    here.ter_set( door, initially_open ? ter_t_door_o : ter_t_door_c );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    REQUIRE( here.access_cache( 0 ).seen_cache[door.xy()] == 0.0f );
+    REQUIRE( here.sees( from, to, 10 ) == initially_open );
+    if( initially_open ) {
+        REQUIRE( here.close_door( door, true, false ) );
+    } else {
+        REQUIRE( here.open_door( get_avatar(), door, true ) );
+    }
+    SECTION( "after_an_incremental_build" ) {
+        build_vision_caches_incrementally();
+        CHECK( here.sees( from, to, 10 ) != initially_open );
+    }
+    SECTION( "before_any_build" ) {
+        // NPC opening door is followed by NPCs looking through it in the same
+        // turn, with no cache build between them
+        CHECK( here.sees( from, to, 10 ) != initially_open );
+    }
+}
+
+TEST_CASE( "vision_potential_los_allows_a_pending_field_change", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 64, 64, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    const tripoint_bub_ms smoke = origin + tripoint::east;
+    const tripoint_bub_ms target = smoke + tripoint::east;
+    REQUIRE( here.add_field( smoke, field_fd_smoke, 3 ) );
+    here.build_map_cache( 0 );
+    REQUIRE_FALSE( here.sees( origin, target, 5 ) );
+    here.remove_field( smoke, field_fd_smoke );
+    // no cache build between the change and the query
+    CHECK( here.has_potential_los( origin, target ) );
+    CHECK( here.sees( origin, target, 5 ) );
+}
+
+TEST_CASE( "vision_clear_path_search_leaves_default_los_alone", "[vision]" )
+{
+    const tripoint_bub_ms source{ 60, 60, 0 };
+    const tripoint_bub_ms destination{ 64, 61, 0 };
+    set_up_transition_scene( source );
+    map &here = get_map();
+    // wall on the default line that another line can pass
+    bool found = false;
+    for( const tripoint_bub_ms &p : line_to( source, destination, 0, 0 ) ) {
+        if( p == destination ) {
+            break;
+        }
+        here.ter_set( p, ter_t_brick_wall );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        if( !here.sees( source, destination, 10 ) &&
+            !here.find_clear_path( source, destination, true ).empty() ) {
+            found = true;
+            break;
+        }
+        here.ter_set( p, ter_t_grass );
+    }
+    REQUIRE( found );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    REQUIRE_FALSE( here.find_clear_path( source, destination, true ).empty() );
+    CHECK_FALSE( here.sees( source, destination, 10 ) );
 }
 
 TEST_CASE( "vision_caches_of_a_freshly_loaded_map_match_the_saved_scene", "[vision]" )

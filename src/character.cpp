@@ -6485,11 +6485,13 @@ void Character::echo_pulse()
                        "none", "none" );
     }
     for( tripoint_bub_ms origin : points_in_radius( pos_bub(), pulse_range ) ) {
-        if( here.move_cost( origin ) == 0 && here.sees( pos_bub(), origin, pulse_range, false ) ) {
+        if( here.move_cost( origin ) == 0 &&
+            here.sees( pos_bub(), origin, pulse_range, false, los_trace::physical ) ) {
             sounds::sound( origin, 5, sounds::sound_t::sensory, _( "clack." ), true,
                            "none", "none" );
             // This only counts obstacles which can be moved through, so the echo is pretty quiet.
-        } else if( is_obstacle( origin ) && here.sees( pos_bub(), origin, pulse_range, false ) ) {
+        } else if( is_obstacle( origin ) &&
+                   here.sees( pos_bub(), origin, pulse_range, false, los_trace::physical ) ) {
             sounds::sound( origin, 1, sounds::sound_t::sensory, _( "click." ), true,
                            "none", "none" );
         }
@@ -6501,7 +6503,7 @@ void Character::echo_pulse()
             add_known_trap( origin, tr );
         }
         Creature *critter = get_creature_tracker().creature_at( origin, true );
-        if( critter && here.sees( pos_bub(), origin, pulse_range, false ) ) {
+        if( critter && here.sees( pos_bub(), origin, pulse_range, false, los_trace::physical ) ) {
             switch( critter->get_size() ) {
                 case creature_size::tiny:
                     echo_volume = 1;

@@ -402,6 +402,7 @@ void map::set_transparency_cache_dirty( const int zlev )
 {
     if( inbounds_z( zlev ) ) {
         get_cache( zlev ).transparency_cache_dirty.set();
+        scene_build_pending = true;
         set_lightmap_cache_dirty_below( zlev );
         bump_geometry_revision( zlev );
     }
@@ -412,6 +413,7 @@ void map::set_transparency_cache_dirty( const tripoint_bub_ms &p, bool field )
     if( inbounds( p ) ) {
         const tripoint_bub_sm smp = coords::project_to<coords::sm>( p );
         get_cache( smp.z() ).transparency_cache_dirty.set( smp.x() * MAPSIZE + smp.y() );
+        scene_build_pending = true;
         set_lightmap_cache_dirty_below( smp.z() );
         if( !field ) {
             get_creature_tracker().invalidate_reachability_cache();
@@ -446,6 +448,7 @@ void map::set_outside_cache_dirty( const int zlev )
 {
     if( inbounds_z( zlev ) ) {
         get_cache( zlev ).outside_cache_dirty = true;
+        scene_build_pending = true;
         set_lightmap_cache_dirty_below( zlev );
     }
 }
@@ -454,6 +457,7 @@ void map::set_floor_cache_dirty( const int zlev )
 {
     if( inbounds_z( zlev ) ) {
         get_cache( zlev ).floor_cache_dirty = true;
+        scene_build_pending = true;
         set_lightmap_cache_dirty_below( zlev );
         bump_geometry_revision( zlev );
     }
@@ -463,6 +467,7 @@ void map::bump_geometry_revision( const int zlev )
 {
     if( inbounds_z( zlev ) ) {
         get_cache( zlev ).geometry_revision = next_cache_generation();
+        last_scene_change = get_cache( zlev ).geometry_revision;
     }
 }
 
@@ -8305,10 +8310,15 @@ void map::draw_from_above( const catacurses::window &w, const tripoint_bub_ms &p
 }
 
 bool map::sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, const int range,
-                bool with_fields ) const
+                bool with_fields, los_trace trace ) const
 {
     int dummy = 0;
-    return sees( F, T, range, dummy, with_fields );
+    return sees( F, T, range, dummy, with_fields, true, trace );
+}
+
+map::lru_cache_t &map::skew_vision_cache_for( const los_trace trace, const bool with_fields ) const
+{
+    return skew_vision_caches[static_cast<int>( trace ) * 2 + ( with_fields ? 0 : 1 )];
 }
 
 // TODO: Change this to a hash function on the map implementation. This will also allow us to
@@ -8330,11 +8340,20 @@ point map::sees_cache_key( const tripoint_bub_ms &from, const tripoint_bub_ms &t
  * This one is internal-only, we don't want to expose the slope tweaking ickiness outside the map class.
  **/
 bool map::sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, const int range,
-                int &bresenham_slope, bool with_fields, bool allow_cached ) const
+                int &bresenham_slope, bool with_fields, bool allow_cached, los_trace trace ) const
 {
+    ensure_scene_caches();
+    if( skew_vision_scene_stamp != last_scene_change ) {
+        for( lru_cache_t &cache : skew_vision_caches ) {
+            cache.clear();
+        }
+        skew_vision_scene_stamp = last_scene_change;
+    }
     bool ( map:: * f_transparent )( const tripoint_bub_ms & p ) const =
-        with_fields ? &map::is_transparent : &map::is_transparent_wo_fields;
-    lru_cache_t &skew_cache = with_fields ? skew_vision_cache : skew_vision_wo_fields_cache;
+        trace == los_trace::optical ?
+        ( with_fields ? &map::is_sight_clear : &map::is_sight_clear_wo_fields ) :
+        ( with_fields ? &map::is_transparent : &map::is_transparent_wo_fields );
+    lru_cache_t &skew_cache = skew_vision_cache_for( trace, with_fields );
     if( std::abs( F.z() - T.z() ) > fov_3d_z_range ||
         ( range >= 0 && range < rl_dist( F, T ) ) ||
         !inbounds( T ) ) {
@@ -8364,7 +8383,9 @@ bool map::sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, const int ra
             }
             return true;
         } );
-        skew_cache.insert( 100000, key, visible ? 1 : 0 );
+        if( allow_cached ) {
+            skew_cache.insert( 100000, key, visible ? 1 : 0 );
+        }
         return visible;
     }
 
@@ -8397,7 +8418,9 @@ bool map::sees( const tripoint_bub_ms &F, const tripoint_bub_ms &T, const int ra
         last_point = new_point;
         return true;
     } );
-    skew_cache.insert( 100000, key, visible ? 1 : 0 );
+    if( allow_cached ) {
+        skew_cache.insert( 100000, key, visible ? 1 : 0 );
+    }
     return visible;
 }
 
@@ -8567,7 +8590,7 @@ std::vector<tripoint_bub_ms> map::find_clear_path( const tripoint_bub_ms &source
     for( int horizontal_offset = -1; horizontal_offset <= max_start_offset; ++horizontal_offset ) {
         int candidate_offset = horizontal_offset * ( start_sign == 0 ? 1 : start_sign );
         if( sees( source, destination, rl_dist( source, destination ),
-                  candidate_offset, /*with_fields=*/true, /*allow_cached=*/false ) ) {
+                  candidate_offset, /*with_fields=*/true, /*allow_cached=*/false, los_trace::physical ) ) {
             return line_to( source, destination, candidate_offset, 0 );
         }
     }
@@ -10830,17 +10853,14 @@ void map::do_vehicle_caching( int z )
     }
 }
 
-void map::build_map_cache( const int zlev, bool skip_lightmap )
+bool map::build_scene_caches()
 {
-    const int minz = zlevels ? -OVERMAP_DEPTH : zlev;
-    const int maxz = zlevels ? OVERMAP_HEIGHT : zlev;
-    bool seen_cache_dirty = false;
-    bool camera_cache_dirty = false;
+    const int minz = zlevels ? -OVERMAP_DEPTH : abs_sub.z();
+    const int maxz = zlevels ? OVERMAP_HEIGHT : abs_sub.z();
+    bool floor_rebuilt = false;
     for( int z = minz; z <= maxz; z++ ) {
         build_outside_cache( z );
-        bool floor_cache_was_dirty = build_floor_cache( z );
-        seen_cache_dirty |= floor_cache_was_dirty;
-        seen_cache_dirty |= get_cache( z ).seen_cache_dirty;
+        floor_rebuilt |= build_floor_cache( z );
         get_cache( z ).vehicle_opaque_cache.fill( false );
     }
     // needs a separate pass as it changes the caches on neighbour z-levels (e.g. floor_cache);
@@ -10852,7 +10872,28 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
     for( int z = minz; z <= maxz; z++ ) {
         build_transparency_cache( z );
     }
+    scene_build_pending = false;
+    scene_built_sight_penalty = get_weather().weather_id->sight_penalty;
+    return floor_rebuilt;
+}
+
+void map::ensure_scene_caches() const
+{
+    if( scene_build_pending ||
+        scene_built_sight_penalty != get_weather().weather_id->sight_penalty ) {
+        // scene caches are memoized state, so a const trace may fill them
+        const_cast<map *>( this )->build_scene_caches();
+    }
+}
+
+void map::build_map_cache( const int zlev, bool skip_lightmap )
+{
+    const int minz = zlevels ? -OVERMAP_DEPTH : zlev;
+    const int maxz = zlevels ? OVERMAP_HEIGHT : zlev;
+    bool seen_cache_dirty = build_scene_caches();
+    bool camera_cache_dirty = false;
     for( int z = minz; z <= maxz; z++ ) {
+        seen_cache_dirty |= get_cache( z ).seen_cache_dirty;
         seen_cache_dirty |= build_vision_transparency_cache( z );
     }
     // scene change the avatar can't see still changes what it sees past it
@@ -10864,10 +10905,6 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
         cast = current;
     }
 
-    if( seen_cache_dirty ) {
-        skew_vision_cache.clear();
-        skew_vision_wo_fields_cache.clear();
-    }
     avatar &u = get_avatar();
     Character::moncam_cache_t mcache = u.get_active_moncams();
     Character::moncam_cache_t diff;
@@ -10959,8 +10996,9 @@ void map::rebuild_vision_caches_from_scratch( const int zlev )
         invalidate_map_cache( z );
         get_cache( z ).vision_observer_overrides.clear();
     }
-    skew_vision_cache.clear();
-    skew_vision_wo_fields_cache.clear();
+    for( lru_cache_t &skew_cache : skew_vision_caches ) {
+        skew_cache.clear();
+    }
     g->reset_light_level();
     build_map_cache( zlev );
     invalidate_visibility_cache();
@@ -12011,8 +12049,12 @@ void map::invalidate_max_populated_zlev( int zlev )
 
 bool map::has_potential_los( const tripoint_bub_ms &from, const tripoint_bub_ms &to ) const
 {
+    ensure_scene_caches();
+    if( skew_vision_scene_stamp != last_scene_change ) {
+        return true;
+    }
     const point key = sees_cache_key( from, to );
-    char cached = skew_vision_cache.get( key, -1 );
+    char cached = skew_vision_cache_for( los_trace::optical, true ).get( key, -1 );
     if( cached != -1 ) {
         return cached > 0;
     }

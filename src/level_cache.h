@@ -107,6 +107,9 @@ struct level_cache : level_cache_default_zero_members {
         void clear();
 
         std::bitset<MAPSIZE *MAPSIZE> transparency_cache_dirty;
+        // submaps the transparency build rewrote since the vision build last
+        // copied them
+        std::bitset<MAPSIZE *MAPSIZE> vision_transparency_dirty;
         // cells of vision_transparency_cache the observer overlay last wrote,
         // with the value; they go back to scene value when overlay moves
         std::vector<std::pair<point_bub_ms, float>> vision_observer_overrides;
