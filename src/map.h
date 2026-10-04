@@ -750,6 +750,9 @@ class map
         */
         int obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &loc2 ) const;
         int ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p ) const;
+        // viewer's eyes above its tile, in grids: size, posture and furniture
+        // it stands on
+        float eye_level( const Creature &viewer ) const;
         int ledge_coverage( const tripoint_bub_ms &viewer_p, const tripoint_bub_ms &target_p,
                             const float &eye_level = 1.0f ) const;
         /**
@@ -2085,8 +2088,8 @@ class map
         // true if any value changed.
         bool build_transparency_cache( int zlev );
         bool build_vision_transparency_cache( int zlev );
-        // cells the avatar's position and posture override in
-        // vision_transparency_cache on level zlev, with the value each takes
+        // cover cells the avatar's posture overrides in vision_transparency_cache
+        // on level zlev, with the value each takes
         std::vector<std::pair<point_bub_ms, float>> observer_vision_overrides( int zlev ) const;
         // fills lm with sunlight. pzlev is current player's zlevel
         void build_sunlight_cache( int pzlev );
@@ -2099,9 +2102,11 @@ class map
         bool build_floor_cache( int zlev );
         // We want this visible in `game`, because we want it built earlier in the turn than the rest
         void build_floor_caches();
+        // hides tiles below origin a ledge covers from an eye eye_level grids
+        // above origin's ground
         void seen_cache_process_ledges( array_of_grids_of<float> &seen_caches,
                                         const array_of_grids_of<const bool> &floor_caches,
-                                        const std::optional<tripoint_bub_ms> &override_p ) const;
+                                        const tripoint_bub_ms &origin, float eye_level = 1.0f ) const;
 
     protected:
         void generate_lightmap( int zlev );
@@ -2364,6 +2369,9 @@ class map
         // two cache builds reads the current scene; weather only scales
         // attenuation, which no trace reads
         void ensure_scene_caches() const;
+        // vision parts (mirrors, cameras, their controls) of the vehicle at
+        // origin the avatar cast may use, flattened for comparison
+        std::vector<int> vision_parts_key( const tripoint_bub_ms &origin, int extension_range ) const;
 
         // Note: no bounds check
         level_cache &get_cache( int zlev ) const {
@@ -2384,6 +2392,13 @@ class map
 
         visibility_variables visibility_variables_cache;
         uint64_t seen_cache_generation = 0;
+        // what last avatar cast read, besides the scene revisions below
+        tripoint_abs_ms avatar_fov_pos;
+        int avatar_fov_range = -1;
+        float avatar_fov_eye_level = -1.0f;
+        std::vector<int> avatar_fov_vision_parts;
+        // light and position of every character as last lightmap saw them
+        std::vector<std::pair<float, tripoint_bub_ms>> cached_char_lights;
         // sight and geometry revisions of each level as last avatar cast saw them
         std::array<std::pair<uint64_t, uint64_t>, OVERMAP_LAYERS> fov_scene_revisions = {};
 

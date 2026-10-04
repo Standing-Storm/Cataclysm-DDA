@@ -299,7 +299,7 @@ std::vector<std::pair<point_bub_ms, float>> map::observer_vision_overrides( cons
 {
     std::vector<std::pair<point_bub_ms, float>> overrides;
     const Character &player_character = get_player_character();
-    const tripoint_bub_ms p = player_character.pos_bub();
+    const tripoint_bub_ms p = player_character.pos_bub( *this );
     if( p.z() != zlev || !inbounds( p ) ) {
         return overrides;
     }
@@ -319,9 +319,6 @@ std::vector<std::pair<point_bub_ms, float>> map::observer_vision_overrides( cons
             }
         }
     }
-    // The tile player is standing on should always be visible
-    // Shouldn't this be handled in the player's seen cache instead??
-    overrides.emplace_back( p.xy(), LIGHT_TRANSPARENCY_OPEN_AIR );
     return overrides;
 }
 
@@ -963,14 +960,21 @@ map::apparent_light_info map::apparent_light_helper( const level_cache &map_cach
         const tripoint_bub_ms &p )
 {
     avatar const &u = get_avatar();
-    const int dist = rl_dist( u.pos_bub(), p );
+    // static, so its callers' level caches are the reality bubble's
+    const tripoint_bub_ms u_pos = u.pos_bub();
+    const int dist = rl_dist( u_pos, p );
     const float abs_vis =
         std::max( map_cache.seen_cache[p.x()][p.y()], map_cache.camera_cache[p.x()][p.y()] );
     const float vis = dist > u.unimpaired_range() ? map_cache.camera_cache[p.x()][p.y()] : abs_vis;
     const bool obstructed = vis <= LIGHT_TRANSPARENCY_SOLID + 0.1;
     const bool abs_obstructed = abs_vis <= LIGHT_TRANSPARENCY_SOLID + 0.1;
 
-    auto is_opaque = [&map_cache]( const point_bub_ms & p ) {
+    // avatar always sees the tile it's standing on, whatever fills it
+    const bool on_avatar_level = p.z() == u_pos.z();
+    auto is_opaque = [&map_cache, &u_pos, on_avatar_level]( const point_bub_ms & p ) {
+        if( on_avatar_level && p == u_pos.xy() ) {
+            return false;
+        }
         return map_cache.transparency_cache[p.x()][p.y()] <= LIGHT_TRANSPARENCY_SOLID &&
                map_cache.vision_transparency_cache[p.x()][p.y()] <= LIGHT_TRANSPARENCY_SOLID;
     };
@@ -1015,7 +1019,7 @@ map::apparent_light_info map::apparent_light_helper( const level_cache &map_cach
             if( is_opaque( neighbour ) ) {
                 continue;
             }
-            if( ( rl_dist( u.pos_bub().xy(), neighbour ) > u.unimpaired_range() &&
+            if( ( rl_dist( u_pos.xy(), neighbour ) > u.unimpaired_range() &&
                   map_cache.camera_cache[neighbour.x()][neighbour.y()] == 0 ) ||
                 ( map_cache.seen_cache[neighbour.x()][neighbour.y()] == 0 &&
                   map_cache.camera_cache[neighbour.x()][neighbour.y()] == 0 ) ) {
@@ -1039,7 +1043,7 @@ lit_level map::apparent_light_at( const tripoint_bub_ms &p,
                                   const visibility_variables &cache ) const
 {
     Character &player_character = get_player_character();
-    const int dist = rl_dist( player_character.pos_bub(), p );
+    const int dist = rl_dist( player_character.pos_bub( *this ), p );
 
     // Clairvoyance overrides everything.
     if( cache.u_clairvoyance > 0 && dist <= cache.u_clairvoyance ) {
@@ -1357,7 +1361,9 @@ void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, i
     cast_zlight<float, sight_calc, sight_check, accumulate_transparency>(
         seen_caches, transparency_caches, floor_caches, origin, penalty, 1.0,
         directions_to_cast );
-    seen_cache_process_ledges( seen_caches, floor_caches, std::nullopt );
+    const Character &player_character = get_player_character();
+    seen_cache_process_ledges( seen_caches, floor_caches, player_character.pos_bub(),
+                               eye_level( player_character ) );
     // set here too: the early return below skips the final set after the
     // mirror pass
     seen_cache_generation = next_cache_generation();
@@ -1431,11 +1437,8 @@ void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, i
 
 void map::seen_cache_process_ledges( array_of_grids_of<float> &seen_caches,
                                      const array_of_grids_of<const bool> &floor_caches,
-                                     const std::optional<tripoint_bub_ms> &override_p ) const
+                                     const tripoint_bub_ms &origin, const float eye_level ) const
 {
-    Character &player_character = get_player_character();
-    // If override is not given, use player character for calculations
-    const tripoint_bub_ms origin = override_p.value_or( player_character.pos_bub() );
     const int min_z = std::max( origin.z() - fov_3d_z_range, -OVERMAP_DEPTH );
     // For each tile
     for( int smx = 0; smx < my_MAPSIZE; ++smx ) {
@@ -1453,8 +1456,7 @@ void map::seen_cache_process_ledges( array_of_grids_of<float> &seen_caches,
                         // Or floor reached
                         if( ( *floor_caches[cache_z] ) [p.x()][p.y()] ) {
                             // In which case check if it should be obscured by a ledge
-                            if( override_p ? ledge_coverage( origin, p ) > 100 : ledge_coverage( player_character,
-                                    p ) > 100 ) {
+                            if( ledge_coverage( origin, p, eye_level ) > 100 ) {
                                 ( *seen_caches[cache_z] )[p.x()][p.y()] = 0.0f;
                             }
                             break;

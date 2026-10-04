@@ -77,7 +77,7 @@ struct level_cache_default_zero_members {
 
     // stores "adjusted transparency" of the tiles
     // initial values derived from sight_cache, uses same units
-    // examples of adjustment: changed transparency on player's tile and special case for crouching
+    // the cover a crouching or prone avatar hides behind
     cata::mdarray<float, point_bub_ms> vision_transparency_cache;
 
     // stores "visibility" of the tiles to the player

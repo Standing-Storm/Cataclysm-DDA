@@ -48,6 +48,7 @@ static const efftype_id effect_narcosis( "narcosis" );
 static const field_type_str_id field_fd_fire( "fd_fire" );
 static const field_type_str_id field_fd_smoke( "fd_smoke" );
 
+static const furn_str_id furn_f_chair( "f_chair" );
 static const furn_str_id furn_test_f_translucent( "test_f_translucent" );
 
 static const move_mode_id move_mode_crouch( "crouch" );
@@ -65,6 +66,7 @@ static const ter_str_id ter_t_door_o( "t_door_o" );
 static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_floor( "t_floor" );
 static const ter_str_id ter_t_grass( "t_grass" );
+static const ter_str_id ter_t_open_air( "t_open_air" );
 static const ter_str_id ter_t_utility_light( "t_utility_light" );
 static const ter_str_id ter_t_window_domestic( "t_window_domestic" );
 static const ter_str_id ter_t_window_frame( "t_window_frame" );
@@ -1367,7 +1369,7 @@ TEST_CASE( "vision_translucent_tile_blocks_again_after_avatar_leaves", "[vision]
     const level_cache &cache = here.access_cache( 0 );
     here.ter_set( window, ter_t_window_stained_green );
     settle_vision_caches();
-    REQUIRE( cache.vision_transparency_cache[window.xy()] == LIGHT_TRANSPARENCY_OPEN_AIR );
+    REQUIRE( cache.seen_cache[window.xy()] > 0.0f );
     g->place_player( window + tripoint::north );
     REQUIRE( get_avatar().pos_bub() == window + tripoint::north );
     build_vision_caches_incrementally();
@@ -1465,6 +1467,55 @@ TEST_CASE( "vision_cache_scene_transitions_match_rebuild", "[vision]" )
         here.ter_set( origin, ter_t_grass );
         build_vision_caches_incrementally();
         oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+    }
+}
+
+TEST_CASE( "vision_cache_observer_transitions_match_rebuild", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+
+    SECTION( "under_a_ledge" ) {
+        // rooftop the avatar looks down from; its edge hides the ground below
+        const tripoint_bub_ms roof = origin + tripoint::above;
+        for( const tripoint_bub_ms &p : here.points_in_radius( roof, 2 ) ) {
+            here.ter_set( p, ter_t_flat_roof );
+        }
+        g->place_player( roof );
+        REQUIRE( you.pos_bub() == roof );
+        here.rebuild_vision_caches_from_scratch( 1 );
+        oracle.prime();
+        SECTION( "floor_change" ) {
+            here.ter_set( roof + tripoint_rel_ms{ 2, 0, 0 }, ter_t_open_air );
+        }
+        SECTION( "target_furniture_coverage_change" ) {
+            here.furn_set( origin + tripoint_rel_ms{ 4, 0, 0 }, furn_f_chair );
+        }
+        here.build_map_cache( 1 );
+        here.update_visibility_cache( 1 );
+        oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+    }
+    SECTION( "vehicle_camera_battery_runs_out" ) {
+        vehicle *v = here.add_vehicle( vehicle_prototype_vehicle_camera_test, origin, 0_degrees, 0,
+                                       veh_spawn_status::UNDAMAGED );
+        REQUIRE( v != nullptr );
+        v->camera_on = true;
+        v->refresh();
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        v->discharge_battery( here, 1000000 );
+        // a turn's camera draw can round down to nothing, so run turns until
+        // the empty battery shuts the camera off
+        for( int turn = 0; turn < 1000 && v->camera_on; ++turn ) {
+            v->power_parts( here );
+        }
+        REQUIRE_FALSE( v->camera_on );
+        build_vision_caches_incrementally();
+        oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+        clear_vehicles();
     }
 }
 
@@ -1735,9 +1786,18 @@ TEST_CASE( "vision_cache_stationary_build_is_noop", "[vision]" )
 {
     const tripoint_bub_ms origin{ 64, 64, 0 };
     set_up_transition_scene( origin );
-    build_transition_room( origin );
+    SECTION( "in_a_room" ) {
+        build_transition_room( origin );
+    }
+    SECTION( "at_a_vehicle_camera_control" ) {
+        vehicle *v = get_map().add_vehicle( vehicle_prototype_vehicle_camera_test, origin, 0_degrees, 0,
+                                            veh_spawn_status::UNDAMAGED );
+        REQUIRE( v != nullptr );
+        v->camera_on = true;
+    }
     get_map().rebuild_vision_caches_from_scratch( 0 );
     check_stationary_build_is_noop();
+    clear_vehicles();
 }
 
 TEST_CASE( "pl_sees-oob-nocrash", "[vision]" )

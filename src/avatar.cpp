@@ -1287,7 +1287,6 @@ void avatar::rebuild_aim_cache() const
 
 void avatar::set_movement_mode( const move_mode_id &new_mode )
 {
-    map &here = get_map();
 
     if( can_switch_to( new_mode ) ) {
         if( is_hauling() && new_mode->stop_hauling() ) {
@@ -1297,8 +1296,6 @@ void avatar::set_movement_mode( const move_mode_id &new_mode )
         move_mode = new_mode;
         // Enchantments based on move modes can stack inappropriately without a recalc here
         recalculate_enchantment_cache();
-        // crouching affects visibility
-        here.set_seen_cache_dirty( posz() );
         recoil = MAX_RECOIL;
     } else {
         add_msg( new_mode->change_message( false, get_steed_type() ) );

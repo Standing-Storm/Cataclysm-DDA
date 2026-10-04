@@ -8454,7 +8454,11 @@ int map::obstacle_coverage( const tripoint_bub_ms &loc1, const tripoint_bub_ms &
 
 int map::ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p ) const
 {
-    tripoint_bub_ms viewer_p = viewer.pos_bub();
+    return ledge_coverage( viewer.pos_bub( *this ), target_p, eye_level( viewer ) );
+}
+
+float map::eye_level( const Creature &viewer ) const
+{
     creature_size viewer_size = viewer.get_size();
 
     // Viewer eye level from ground in grids
@@ -8488,12 +8492,11 @@ int map::ledge_coverage( const Creature &viewer, const tripoint_bub_ms &target_p
         }
     }
     // Viewer eye level is higher when standing on furniture
-    const furn_id &viewer_furn = furn( viewer_p );
+    const furn_id &viewer_furn = furn( viewer.pos_bub( *this ) );
     if( viewer_furn.obj().id ) {
         eye_level += viewer_furn->coverage * 0.01f;
     }
-
-    return ledge_coverage( viewer_p, target_p, eye_level );
+    return eye_level;
 }
 
 int map::ledge_coverage( const tripoint_bub_ms &viewer_p, const tripoint_bub_ms &target_p,
@@ -10886,6 +10889,32 @@ void map::ensure_scene_caches() const
     }
 }
 
+std::vector<int> map::vision_parts_key( const tripoint_bub_ms &origin,
+                                        const int extension_range ) const
+{
+    std::vector<int> key;
+    const optional_vpart_position vp = veh_at( origin );
+    if( !vp ) {
+        return key;
+    }
+    vehicle &veh = vp->vehicle();
+    key.push_back( veh.camera_on ? 1 : 0 );
+    for( const vpart_reference &part : veh.get_all_parts_with_fakes() ) {
+        if( part.part().removed || part.part().is_broken() ||
+            !part.info().has_flag( VPFLAG_EXTENDS_VISION ) ) {
+            continue;
+        }
+        const tripoint_bub_ms pos = part.pos_bub( *this );
+        if( rl_dist( origin, pos ) > extension_range ) {
+            continue;
+        }
+        key.insert( key.end(), { pos.x(), pos.y(), pos.z(), static_cast<int>( part.part_index() ),
+                                 part.part().hp()
+                               } );
+    }
+    return key;
+}
+
 void map::build_map_cache( const int zlev, bool skip_lightmap )
 {
     const int minz = zlevels ? -OVERMAP_DEPTH : zlev;
@@ -10911,18 +10940,23 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
     std::set_symmetric_difference( u.moncam_cache.begin(), u.moncam_cache.end(), mcache.begin(),
                                    mcache.end(), std::inserter( diff, diff.end() ) );
     camera_cache_dirty |= !diff.empty();
-    // Initial value is illegal player position.
     const tripoint_abs_ms p = get_player_character().pos_abs();
     int const sr = u.unimpaired_range();
-    static tripoint_abs_ms player_prev_pos;
-    static int player_prev_range( 0 );
-    seen_cache_dirty |= player_prev_pos != p || sr != player_prev_range || camera_cache_dirty;
+    // avatar cast also reads eye height for ledges and the mirrors and cameras
+    // of the vehicle it stands in
+    const float eye = inbounds( p ) ? eye_level( u ) : 0.0f;
+    std::vector<int> vision_parts = inbounds( p ) ? vision_parts_key( get_bub( p ), sr ) :
+                                    std::vector<int>();
+    seen_cache_dirty |= avatar_fov_pos != p || sr != avatar_fov_range || eye != avatar_fov_eye_level ||
+                        vision_parts != avatar_fov_vision_parts || camera_cache_dirty;
     if( seen_cache_dirty ) {
         if( inbounds( p ) ) {
             build_seen_cache( get_bub( p ), zlev, sr );
         }
-        player_prev_pos = p;
-        player_prev_range = sr;
+        avatar_fov_pos = p;
+        avatar_fov_range = sr;
+        avatar_fov_eye_level = eye;
+        avatar_fov_vision_parts = std::move( vision_parts );
         camera_cache_dirty = true;
 #if defined(TILES)
         if( !test_mode ) {
@@ -10946,16 +10980,7 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
     // Detect character/NPC light changes reactively.
     // Covers equipment, effects, trade/dialogue mutations, and position changes.
     {
-        struct char_light_state {
-            float light;
-            tripoint_bub_ms pos;
-            bool operator==( const char_light_state &o ) const {
-                return light == o.light && pos == o.pos;
-            }
-            bool operator!=( const char_light_state &o ) const {
-                return !( *this == o );
-            }
-        };
+        using char_light_state = std::pair<float, tripoint_bub_ms>;
         auto compute = []( const Character & ch ) -> char_light_state {
             float light = ch.active_light();
             if( ch.has_effect( effect_onfire ) )
@@ -10968,7 +10993,6 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
             return { light, ch.pos_bub() };
         };
 
-        static std::vector<char_light_state> cached_char_lights;
         std::vector<char_light_state> current_lights;
         current_lights.push_back( compute( get_player_character() ) );
         for( const npc &guy : g->all_npcs() ) {
@@ -10976,10 +11000,10 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
         }
         if( current_lights != cached_char_lights ) {
             for( const char_light_state &s : cached_char_lights ) {
-                set_lightmap_cache_dirty( s.pos.z() );
+                set_lightmap_cache_dirty( s.second.z() );
             }
             for( const char_light_state &s : current_lights ) {
-                set_lightmap_cache_dirty( s.pos.z() );
+                set_lightmap_cache_dirty( s.second.z() );
             }
             cached_char_lights = std::move( current_lights );
         }
@@ -10999,6 +11023,10 @@ void map::rebuild_vision_caches_from_scratch( const int zlev )
     for( lru_cache_t &skew_cache : skew_vision_caches ) {
         skew_cache.clear();
     }
+    avatar_fov_range = -1;
+    avatar_fov_vision_parts.clear();
+    cached_char_lights.clear();
+    fov_scene_revisions = {};
     g->reset_light_level();
     build_map_cache( zlev );
     invalidate_visibility_cache();
