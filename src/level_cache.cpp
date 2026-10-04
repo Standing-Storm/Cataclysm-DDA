@@ -37,6 +37,9 @@ void level_cache::clear()
     has_colored_lights = false;
     vision_observer_overrides.clear();
     built_sight_penalty = -1.0f;
+    outside_rewritten = true;
+    vehicle_opaque_any = false;
+    transparency_vehicle_opaque_any = false;
     sight_revision = next_cache_generation();
     geometry_revision = next_cache_generation();
     no_floor_gaps = false;

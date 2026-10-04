@@ -201,11 +201,16 @@ bool map::build_transparency_cache( const int zlev )
     if( sight_penalty != map_cache.built_sight_penalty ) {
         map_cache.transparency_cache_dirty.set();
     } else {
-        mark_changed_submaps_dirty( map_cache, outside_cache, map_cache.transparency_outside,
-                                    my_MAPSIZE );
-        mark_changed_submaps_dirty( map_cache, vehicle_opaque, map_cache.transparency_vehicle_opaque,
-                                    my_MAPSIZE );
+        if( map_cache.outside_rewritten ) {
+            mark_changed_submaps_dirty( map_cache, outside_cache, map_cache.transparency_outside,
+                                        my_MAPSIZE );
+        }
+        if( map_cache.vehicle_opaque_any || map_cache.transparency_vehicle_opaque_any ) {
+            mark_changed_submaps_dirty( map_cache, vehicle_opaque, map_cache.transparency_vehicle_opaque,
+                                        my_MAPSIZE );
+        }
     }
+    map_cache.outside_rewritten = false;
 
     if( map_cache.transparency_cache_dirty.none() ) {
         return false;
@@ -274,6 +279,7 @@ bool map::build_transparency_cache( const int zlev )
 
     map_cache.transparency_outside = outside_cache;
     map_cache.transparency_vehicle_opaque = vehicle_opaque;
+    map_cache.transparency_vehicle_opaque_any = map_cache.vehicle_opaque_any;
     map_cache.built_sight_penalty = sight_penalty;
     map_cache.vision_transparency_dirty |= map_cache.transparency_cache_dirty;
     map_cache.transparency_cache_dirty.reset();

@@ -115,6 +115,12 @@ struct level_cache : level_cache_default_zero_members {
         std::vector<std::pair<point_bub_ms, float>> vision_observer_overrides;
         // weather sight penalty transparency build last applied
         float built_sight_penalty = -1.0f;
+        // outside_cache written since transparency build last read it
+        bool outside_rewritten = true;
+        // vehicle_opaque_cache, or the copy transparency build last read, holds
+        // an opaque tile; with neither, comparing is pointless
+        bool vehicle_opaque_any = false;
+        bool transparency_vehicle_opaque_any = false;
         // set from next_cache_generation when a value in the four transparency
         // and sight caches changes
         uint64_t sight_revision = 0;

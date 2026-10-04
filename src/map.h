@@ -2357,13 +2357,12 @@ class map
         // a writer marked outside, floor or transparency caches dirty since
         // last scene build
         bool scene_build_pending = true;
-        // weather sight penalty of last scene build
-        float scene_built_sight_penalty = -1.0f;
         // outside, floor, vehicle, transparency and sight caches of every level;
         // returns true when a floor cache was rebuilt
         bool build_scene_caches();
-        // builds scene caches only when a writer or weather changed them, so a
-        // trace between two cache builds reads the current scene
+        // builds scene caches only when a writer changed them, so a trace between
+        // two cache builds reads the current scene; weather only scales
+        // attenuation, which no trace reads
         void ensure_scene_caches() const;
 
         // Note: no bounds check

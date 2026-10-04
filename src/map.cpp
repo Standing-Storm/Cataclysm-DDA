@@ -10583,9 +10583,11 @@ void map::build_outside_cache( const int zlev )
     cata::mdarray<bool, point_bub_ms, padded_w, padded_h> padded_cache;
 
     auto &outside_cache = ch.outside_cache;
+    ch.outside_rewritten = true;
     if( zlev < 0 ) {
         std::uninitialized_fill_n(
             &outside_cache[0][0], MAPSIZE_X * MAPSIZE_Y, false );
+        ch.outside_cache_dirty = false;
         return;
     }
 
@@ -10806,6 +10808,7 @@ static void vehicle_caching_internal( level_cache &zch, const vpart_reference &v
         int dpart = v->part_with_feature( part, VPFLAG_OPENABLE, true );
         if( dpart < 0 || !v->part( dpart ).open ) {
             zch.vehicle_opaque_cache[part_pos.x()][part_pos.y()] = true;
+            zch.vehicle_opaque_any = true;
         } else {
             vehicle_is_opaque = false;
         }
@@ -10813,6 +10816,7 @@ static void vehicle_caching_internal( level_cache &zch, const vpart_reference &v
 
     if( vehicle_is_opaque || vp.is_inside() ) {
         outside_cache[part_pos.x()][part_pos.y()] = false;
+        zch.outside_rewritten = true;
     }
 
     if( vp.has_feature( VPFLAG_BOARDABLE ) && !vp.part().is_broken() ) {
@@ -10861,7 +10865,11 @@ bool map::build_scene_caches()
     for( int z = minz; z <= maxz; z++ ) {
         build_outside_cache( z );
         floor_rebuilt |= build_floor_cache( z );
-        get_cache( z ).vehicle_opaque_cache.fill( false );
+        level_cache &ch = get_cache( z );
+        if( ch.vehicle_opaque_any ) {
+            ch.vehicle_opaque_cache.fill( false );
+            ch.vehicle_opaque_any = false;
+        }
     }
     // needs a separate pass as it changes the caches on neighbour z-levels (e.g. floor_cache);
     // otherwise such changes might be overwritten by main cache-building logic
@@ -10873,14 +10881,12 @@ bool map::build_scene_caches()
         build_transparency_cache( z );
     }
     scene_build_pending = false;
-    scene_built_sight_penalty = get_weather().weather_id->sight_penalty;
     return floor_rebuilt;
 }
 
 void map::ensure_scene_caches() const
 {
-    if( scene_build_pending ||
-        scene_built_sight_penalty != get_weather().weather_id->sight_penalty ) {
+    if( scene_build_pending ) {
         // scene caches are memoized state, so a const trace may fill them
         const_cast<map *>( this )->build_scene_caches();
     }
