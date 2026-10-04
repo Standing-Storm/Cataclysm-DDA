@@ -875,6 +875,331 @@ TEST_CASE( "colored_light_fades_in_without_a_jump_as_its_weight_grows", "[smooth
     }
 }
 
+namespace
+{
+struct filter_fixture {
+    std::string name;
+    test_lightmap map;
+};
+} // namespace
+
+// light maps with every kind of filter edge: seam beside a wall, walled
+// diagonal, sight edge with walls, steep sight ratio, colored fade from
+// darkness, lit wall beside dim floor
+static std::vector<filter_fixture> filter_fixtures()
+{
+    std::vector<filter_fixture> out;
+    out.push_back( { "seam", build_test_lightmap( {
+            "oooooooo",
+            "oToooooo",
+            "o#oooooo",
+            "oooooooo",
+        }, 0.2f, 1.0f )
+    } );
+    out.push_back( { "walled diagonal", build_test_lightmap( {
+            "o#oooooo",
+            "#Toooooo",
+            "oooooooo",
+        }, 0.2f, 1.0f )
+    } );
+    out.push_back( { "sight edge", build_test_lightmap( {
+            "ooo#    ",
+            "oTo#    ",
+            "ooo#    ",
+            "oooo    ",
+        }, 0.4f, 1.0f )
+    } );
+    out.push_back( { "steep sight ratio", build_test_lightmap( {
+            "o o o o ",
+            "#o#o#o#o",
+            "To To To",
+            " o o o o",
+        }, 0.6f, 0.9f )
+    } );
+    out.push_back( { "colored fade", build_test_lightmap( {
+            "oooooooo",
+            "oToooooo",
+            "oooooooo",
+        }, 0.0f, 0.05f )
+    } );
+    out.push_back( { "lit wall", build_test_lightmap( {
+            "ooXooooo",
+            "ooXooooo",
+            "oooooooo",
+        }, 0.3f, 1.0f )
+    } );
+    return out;
+}
+
+// layout of the middle level's whole test area
+static smooth_lighting::prefilter_layout test_layout( const int grid )
+{
+    smooth_lighting::prefilter_layout layout;
+    layout.area = half_open_rectangle<point>( point::zero, point( test_columns, test_rows ) );
+    layout.first_level = 1;
+    layout.levels = 1;
+    layout.grid = grid;
+    return layout;
+}
+
+TEST_CASE( "point_filter_is_the_finished_raw_filter", "[smooth_lighting]" )
+{
+    const smooth_lighting::sample_params filtered{ false, false };
+    for( const filter_fixture &f : filter_fixtures() ) {
+        for( int cy = 0; cy < 4; ++cy ) {
+            for( int cx = 0; cx < test_columns; ++cx ) {
+                // steps exact in binary, so the reference's local position is d
+                for( const float d : {
+                         0.0f, 0.25f, 0.5f, 0.75f, 1.0f
+                     } ) {
+                    CAPTURE( f.name, cx, cy, d );
+                    const smooth_lighting::lit_sample point_sample = smooth_lighting::reference_sample(
+                                f.map.view, filtered, ground_at( point( cx, cy ), cx + d, cy + 1.0f - d ) );
+                    const smooth_lighting::lit_sample finished = smooth_lighting::finish_filter(
+                                smooth_lighting::reference_filter( f.map.view, point( cx, test_rows + cy ), 1, d,
+                                        1.0f - d ) );
+                    CHECK( finished.light == point_sample.light );
+                    CHECK( finished.hue == point_sample.hue );
+                    CHECK( finished.in_sight == point_sample.in_sight );
+                    CHECK( finished.visible == point_sample.visible );
+                    CHECK( finished.weight == point_sample.weight );
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE( "prefiltered_light_matches_the_filter_at_grid_points", "[smooth_lighting]" )
+{
+    const int grid = smooth_lighting::prefilter_grid;
+    const smooth_lighting::sample_params filtered{ false, false };
+    for( const filter_fixture &f : filter_fixtures() ) {
+        const smooth_lighting::prefilter_table table = smooth_lighting::build_prefilter_table( f.map.view,
+                test_layout( grid ) );
+        for( const point &cell : {
+                 point::south_east, point( 2, 2 ), point( 3, 1 ), point( 7, 3 )
+             } ) {
+            for( int j = 0; j <= grid; ++j ) {
+                for( int i = 0; i <= grid; ++i ) {
+                    const float lx = static_cast<float>( i ) / grid;
+                    const float ly = static_cast<float>( j ) / grid;
+                    CAPTURE( f.name, cell, i, j );
+                    const smooth_lighting::filter_result raw = smooth_lighting::reference_filter( f.map.view,
+                            cell + point( 0, test_rows ), 1, lx, ly );
+                    smooth_lighting::filter_result stored = raw;
+                    stored.light = smooth_lighting::half_round( raw.light );
+                    stored.chroma = { smooth_lighting::half_round( raw.chroma[0] ),
+                                      smooth_lighting::half_round( raw.chroma[1] ),
+                                      std::max( 1.0f - smooth_lighting::half_round( raw.chroma[0] ) -
+                                                smooth_lighting::half_round( raw.chroma[1] ), 0.0f )
+                                    };
+                    stored.in_sight = smooth_lighting::half_round( raw.in_sight );
+                    const smooth_lighting::lit_sample want = smooth_lighting::finish_filter( stored );
+                    const smooth_lighting::lit_sample got = smooth_lighting::reference_prefiltered_sample( table,
+                                                            f.map.view, filtered, ground_at( cell, cell.x + lx, cell.y + ly ) );
+                    CHECK( got.light == Approx( want.light ).margin( 1e-5 ) );
+                    CHECK( got.in_sight == Approx( want.in_sight ).margin( 1e-5 ) );
+                    for( int k = 0; k < 3; ++k ) {
+                        CHECK( got.hue[k] == Approx( want.hue[k] ).margin( 1e-5 ) );
+                    }
+                }
+            }
+        }
+    }
+}
+
+namespace
+{
+struct look_case {
+    std::string name;
+    smooth_lighting::look_params look;
+    bool night = false;
+};
+} // namespace
+
+static std::vector<look_case> look_cases()
+{
+    smooth_lighting::look_params plain;
+    smooth_lighting::look_params blended;
+    blended.blend_memory = true;
+    blended.memory_look = 1;
+    smooth_lighting::look_params custom;
+    custom.blend_memory = true;
+    custom.memory_look = smooth_lighting::custom_look;
+    custom.custom_dark = { 0.26f, 0.09f, 0.07f };
+    custom.custom_light = { 0.95f, 0.86f, 0.64f };
+    custom.custom_gamma = 1.6f;
+    return {
+        { "plain", plain, false },
+        { "memory preset", blended, false },
+        { "custom memory", custom, false },
+        { "night", plain, true },
+        { "night, memory preset", blended, true },
+    };
+}
+
+// largest per channel difference, in 0..255 steps, between the prefilter and
+// point filter over every fixture, look, sprite color and own or standing
+// pixel; `quantize_weights` rounds the bilinear weights to 1/16 as the coarsest
+// hardware filter may
+static float max_prefilter_error( const int grid, const bool quantize_weights )
+{
+    static const std::array<std::array<float, 3>, 4> colors = { {
+            { 0.5f, 0.5f, 0.5f }, { 220.0f / 255, 40.0f / 255, 30.0f / 255 },
+            { 60.0f / 255, 40.0f / 255, 20.0f / 255 }, { 1.0f, 1.0f, 1.0f }
+        }
+    };
+    const std::vector<look_case> looks = look_cases();
+    float worst = 0.0f;
+    for( const filter_fixture &f : filter_fixtures() ) {
+        smooth_lighting::prefilter_table table = smooth_lighting::build_prefilter_table( f.map.view,
+                test_layout( grid ) );
+        table.quantize_weights = quantize_weights;
+        for( const smooth_lighting::sample_params &params : {
+                 smooth_lighting::sample_params{ false, false }, smooth_lighting::sample_params{ false, true }
+             } ) {
+            for( const bool standing : {
+                     false, true
+                 } ) {
+                for( int cy = 0; cy < 4; ++cy ) {
+                    for( int cx = 0; cx < test_columns; ++cx ) {
+                        for( int j = 0; j <= 15; ++j ) {
+                            for( int i = 0; i <= 15; ++i ) {
+                                smooth_lighting::lit_coords at = ground_at( point( cx, cy ), cx + i / 15.0f,
+                                                                 cy + j / 15.0f );
+                                if( standing ) {
+                                    at.column += smooth_lighting::standing_marker;
+                                }
+                                const smooth_lighting::lit_sample want = smooth_lighting::reference_sample(
+                                            f.map.view, params, at );
+                                const smooth_lighting::lit_sample got =
+                                    smooth_lighting::reference_prefiltered_sample( table, f.map.view, params, at );
+                                for( const look_case &l : looks ) {
+                                    for( const std::array<float, 3> &rgb : colors ) {
+                                        const std::array<float, 3> a = l.night ?
+                                                                       smooth_lighting::reference_night_rgb( l.look, rgb, got ) :
+                                                                       smooth_lighting::reference_lit_rgb( l.look, rgb, got );
+                                        const std::array<float, 3> b = l.night ?
+                                                                       smooth_lighting::reference_night_rgb( l.look, rgb, want ) :
+                                                                       smooth_lighting::reference_lit_rgb( l.look, rgb, want );
+                                        for( int k = 0; k < 3; ++k ) {
+                                            worst = std::max( worst, 255.0f * std::abs( a[k] - b[k] ) );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return worst;
+}
+
+TEST_CASE( "prefiltered_light_stays_within_its_error_budget", "[smooth_lighting]" )
+{
+    const int grid = smooth_lighting::prefilter_grid;
+    const float error = max_prefilter_error( grid, false );
+    CAPTURE( grid, error );
+    CHECK( error <= smooth_lighting::prefilter_error_budget );
+    if( grid > 2 ) {
+        // coarsest grid that fits the budget
+        const float coarser = max_prefilter_error( grid - 2, false );
+        CAPTURE( coarser );
+        CHECK( coarser > smooth_lighting::prefilter_error_budget );
+    }
+}
+
+// not run by default: prints the error of every candidate grid, exact and
+// with the coarsest hardware filter weights
+TEST_CASE( "prefilter_error_per_grid", "[.][smooth_lighting_report]" )
+{
+    for( const int grid : {
+             2, 4, 6, 8, 10, 12, 16
+         } ) {
+        WARN( "grid " << grid << ": exact " << max_prefilter_error( grid, false ) <<
+              ", 1/16 weights " << max_prefilter_error( grid, true ) );
+    }
+}
+
+TEST_CASE( "prefilter_layout_puts_each_level_in_its_own_block", "[smooth_lighting]" )
+{
+    smooth_lighting::prefilter_layout layout;
+    layout.area = half_open_rectangle<point>( point( 2, 1 ), point( 5, 4 ) );
+    layout.first_level = 3;
+    layout.levels = 2;
+    layout.grid = 4;
+    REQUIRE( layout.size() == point( 3 * 5, 3 * 5 * 2 ) );
+    std::vector<int> owner( static_cast<size_t>( layout.size().x ) * layout.size().y, -1 );
+    int block = 0;
+    for( int level = 3; level < 5; ++level ) {
+        for( int y = 1; y < 4; ++y ) {
+            for( int x = 2; x < 5; ++x ) {
+                const point origin = layout.block_origin( point( x, y ), level );
+                CAPTURE( x, y, level, origin );
+                for( int j = 0; j <= layout.grid; ++j ) {
+                    for( int i = 0; i <= layout.grid; ++i ) {
+                        const point t = origin + point( i, j );
+                        REQUIRE( t.x >= 0 );
+                        REQUIRE( t.y >= 0 );
+                        REQUIRE( t.x < layout.size().x );
+                        REQUIRE( t.y < layout.size().y );
+                        int &o = owner[static_cast<size_t>( t.y ) * layout.size().x + t.x];
+                        CHECK( o == -1 );
+                        o = block;
+                    }
+                }
+                ++block;
+            }
+        }
+    }
+    CHECK( std::count( owner.begin(), owner.end(), -1 ) == 0 );
+}
+
+TEST_CASE( "prefilter_fits_only_a_supported_format_within_the_size_limit", "[smooth_lighting]" )
+{
+    smooth_lighting::prefilter_layout layout;
+    layout.area = half_open_rectangle<point>( point::zero, point( 10, 4 ) );
+    layout.first_level = 0;
+    layout.levels = 2;
+    layout.grid = 4;
+    REQUIRE( layout.size() == point( 50, 40 ) );
+    CHECK( smooth_lighting::prefilter_fits( layout, 50, true ) );
+    CHECK_FALSE( smooth_lighting::prefilter_fits( layout, 50, false ) );
+    CHECK_FALSE( smooth_lighting::prefilter_fits( layout, 49, true ) );
+    layout.levels = 3;
+    CHECK_FALSE( smooth_lighting::prefilter_fits( layout, 50, true ) );
+}
+
+TEST_CASE( "prefilter_manual_lookup_stays_inside_the_last_block", "[smooth_lighting]" )
+{
+    smooth_lighting::prefilter_layout layout;
+    layout.area = half_open_rectangle<point>( point( 3, 2 ), point( 6, 5 ) );
+    layout.first_level = 0;
+    layout.levels = 2;
+    layout.grid = 4;
+    const point last_cell( 5, 4 );
+    const point origin = layout.block_origin( last_cell, 1 );
+    for( const std::array<float, 2> &local : {
+             std::array<float, 2> { 1.0f, 0.5f }, std::array<float, 2> { 0.5f, 1.0f },
+             std::array<float, 2> { 1.0f, 1.0f }
+         } ) {
+        CAPTURE( local[0], local[1] );
+        const smooth_lighting::prefilter_lookup l = smooth_lighting::prefilter_lookup_texels( layout,
+                last_cell, 1, local[0], local[1] );
+        for( const point &t : l.texels ) {
+            CAPTURE( t );
+            CHECK( t.x >= origin.x );
+            CHECK( t.y >= origin.y );
+            CHECK( t.x <= origin.x + layout.grid );
+            CHECK( t.y <= origin.y + layout.grid );
+            CHECK( t.x < layout.size().x );
+            CHECK( t.y < layout.size().y );
+        }
+    }
+}
+
 TEST_CASE( "smooth_lighting_failure_policy", "[smooth_lighting]" )
 {
     SECTION( "uploads fail on consecutive frames until the last retry latches" ) {
