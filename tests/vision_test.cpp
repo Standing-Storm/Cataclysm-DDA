@@ -16,6 +16,7 @@
 #include "coordinates.h"
 #include "creature.h"
 #include "creature_tracker.h"
+#include "current_map.h"
 #include "enums.h"
 #include "game.h"
 #include "level_cache.h"
@@ -1670,6 +1671,36 @@ TEST_CASE( "vision_clear_path_search_leaves_default_los_alone", "[vision]" )
     here.rebuild_vision_caches_from_scratch( 0 );
     REQUIRE_FALSE( here.find_clear_path( source, destination, true ).empty() );
     CHECK_FALSE( here.sees( source, destination, 10 ) );
+}
+
+TEST_CASE( "vision_scene_caches_place_vehicles_on_the_map_being_built", "[vision]" )
+{
+    set_up_transition_scene( { 60, 60, 0 } );
+    // map far outside the reality bubble, made current the way mapgen does
+    smallmap far;
+    far.load( project_to<coords::omt>( get_avatar().pos_abs() ) + point_rel_omt( 20, 20 ), false );
+    swap_map swap( *far.cast_to_map() );
+    map &here = get_map();
+    REQUIRE( &here != &reality_bubble() );
+    for( const tripoint_bub_ms &p : here.points_on_zlevel( 0 ) ) {
+        here.ter_set( p, ter_t_grass );
+        here.furn_set( p, furn_str_id::NULL_ID() );
+    }
+    const tripoint_bub_ms spot{ 12, 12, 0 };
+    vehicle *v = here.add_vehicle( vehicle_prototype_meth_lab, spot, 0_degrees, 0,
+                                   veh_spawn_status::UNDAMAGED );
+    REQUIRE( v != nullptr );
+    for( const vpart_reference &vp : v->get_avail_parts( "OPENABLE" ) ) {
+        v->close( here, vp.part_index() );
+    }
+    // sight query builds this map's scene caches first
+    here.sees( spot, spot + tripoint::east, 5 );
+    int walls = 0;
+    for( const vpart_reference &vp : v->get_avail_parts( "OPAQUE" ) ) {
+        walls += !here.is_transparent( vp.pos_bub( here ) );
+    }
+    CHECK( walls > 0 );
+    here.destroy_vehicle( v );
 }
 
 TEST_CASE( "vision_caches_of_a_freshly_loaded_map_match_the_saved_scene", "[vision]" )
