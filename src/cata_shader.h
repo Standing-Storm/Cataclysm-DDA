@@ -433,7 +433,7 @@ class variant_pass
         SDL_GPUDevice *lit_device_ = nullptr;
         SDL_GPUSampler *lit_sampler_ = nullptr;
         SDL_Texture *lit_texture_ = nullptr;
-        // lit_params block of lit_sample.glsl, std140: seven vec4
+        // lit_params block of lit_common.glsl, std140: seven vec4
         struct lit_params {
             // light map width, height, rows per z level, reach mask column
             std::array<int32_t, 4> size = {};
