@@ -379,18 +379,22 @@ bool map::build_vision_transparency_cache( int zlev )
 
 void map::apply_character_light( Character &p )
 {
+    const tripoint_bub_ms pos = p.pos_bub( *this );
+    if( !inbounds( pos ) ) {
+        return;
+    }
     if( p.has_effect( effect_onfire ) ) {
-        apply_light_source( p.pos_bub(), 8 );
+        apply_light_source( pos, 8 );
     } else if( p.has_effect( effect_haslight ) ) {
-        apply_light_source( p.pos_bub(), 4 );
+        apply_light_source( pos, 4 );
     }
 
     const float held_luminance = p.active_light();
     if( held_luminance > LIGHT_AMBIENT_LOW ) {
-        apply_light_source( p.pos_bub(), held_luminance );
+        apply_light_source( pos, held_luminance );
     }
 
-    if( held_luminance >= 4 && held_luminance > ambient_light_at( p.pos_bub() ) - 0.5f ) {
+    if( held_luminance >= 4 && held_luminance > ambient_light_at( pos ) - 0.5f ) {
         p.add_effect( effect_haslight, 1_turns );
     }
 }
@@ -399,13 +403,19 @@ void map::apply_character_light( Character &p )
 // toward the lower limit. Since it's sunlight, the rays are parallel.
 // Each layer consults the next layer up to determine the intensity of the light that reaches it.
 // Once this is complete, additional operations add more dynamic lighting.
-void map::build_sunlight_cache( int pzlev )
+void map::build_sunlight_cache()
 {
     const int zlev_min = -OVERMAP_DEPTH;
     // Start at the topmost populated zlevel to avoid unnecessary raycasting
     // Plus one zlevel to prevent clipping inside structures
-    const int zlev_max = clamp( calc_max_populated_zlev() + 1, std::min( pzlev + 1, OVERMAP_HEIGHT ),
-                                OVERMAP_HEIGHT );
+    const int zlev_max = std::min( calc_max_populated_zlev() + 1, OVERMAP_HEIGHT );
+    // levels above that are open sky: one value each, no grid to fill
+    for( int zlev = OVERMAP_HEIGHT; zlev > zlev_max; zlev-- ) {
+        level_cache &map_cache = get_cache( zlev );
+        map_cache.natural_light_level_cache = g->natural_light_level( zlev );
+        map_cache.sun_revision = next_cache_generation();
+        map_cache.sun_uniform = g->natural_light_level( 0 );
+    }
 
     // true if all previous z-levels are fully transparent to light (no floors, transparency >= air)
     bool fully_outside = true;
@@ -422,14 +432,11 @@ void map::build_sunlight_cache( int pzlev )
 
     // Iterate top to bottom because sunlight cache needs to construct in that order.
     for( int zlev = zlev_max; zlev >= zlev_min; zlev-- ) {
-        if( pzlev != get_avatar().posz() && zlev == get_avatar().posz() ) {
-            // Don't trash the lighting for the PC when this is called for someone else at a different
-            // Z level, as only the specified Z level is being rebuilt with light sources by the caller.
-            continue;
-        }
         level_cache &map_cache = get_cache( zlev );
         map_cache.natural_light_level_cache = g->natural_light_level( zlev );
-        auto &lm = map_cache.lm;
+        map_cache.sun_revision = next_cache_generation();
+        map_cache.sun_uniform = -1.0f;
+        auto &lm = map_cache.sun_lm;
         // Grab illumination at ground level.
         const float outside_light_level = g->natural_light_level( 0 );
         // TODO: if zlev < 0 is open to sunlight, this won't calculate correct light, but neither does g->natural_light_level()
@@ -471,7 +478,7 @@ void map::build_sunlight_cache( int pzlev )
         // At first compress the angle such that it takes no more than one tile of shift per level.
         // To exceed that, we'll have to handle casting light from the side instead of the top.
         const level_cache &prev_map_cache = get_cache_ref( zlev + 1 );
-        const auto &prev_lm = prev_map_cache.lm;
+        const auto &prev_lm = prev_map_cache.sun_lm;
         const auto &prev_transparency_cache = prev_map_cache.transparency_cache;
         const auto &prev_floor_cache = prev_map_cache.floor_cache;
         const auto &outside_cache = map_cache.outside_cache;
@@ -536,21 +543,56 @@ void map::build_sunlight_cache( int pzlev )
     }
 }
 
+void map::ensure_light( const int zlev ) const
+{
+    // light built from the current sunlight stays valid as of the last
+    // build_map_cache, full or not, like the views
+    if( get_cache_ref( zlev ).lightmap_sun_revision != get_cache_ref( zlev ).sun_revision ) {
+        set_sunlight_only( zlev );
+    }
+}
+
+void map::set_sunlight_only( const int zlev ) const
+{
+    // a level no cast reaches gets sunlight alone, as every level did before
+    // light was built per level; build_map_cache adds the sources where a cast
+    // reached
+    level_cache &ch = get_cache( zlev );
+    if( ch.sun_uniform >= 0.0f ) {
+        ch.lm.fill( four_quadrants( ch.sun_uniform ) );
+    } else {
+        ch.lm = ch.sun_lm;
+    }
+    ch.sm.fill( 0 );
+    ch.light_color_cache.fill( light_color_rgb{} );
+    ch.has_colored_lights = false;
+    ch.light_full = false;
+    ch.lightmap_sun_revision = ch.sun_revision;
+    ch.lightmap_generation = next_cache_generation();
+}
+
 void map::generate_lightmap( const int zlev )
 {
     level_cache &map_cache = get_cache( zlev );
-    if( !map_cache.lightmap_dirty ) {
+    if( map_cache.light_full && !map_cache.lightmap_dirty &&
+        map_cache.lightmap_sun_revision == map_cache.sun_revision ) {
         return;
     }
+    map_cache.light_full = true;
     map_cache.lightmap_dirty = false;
-    map_cache.lightmap_generation = next_cache_generation();
+    map_cache.lightmap_sun_revision = map_cache.sun_revision;
 
     auto &lm = map_cache.lm;
     auto &sm = map_cache.sm;
     auto &outside_cache = map_cache.outside_cache;
     auto &prev_floor_cache = get_cache( clamp( zlev + 1, -OVERMAP_DEPTH, OVERMAP_DEPTH ) ).floor_cache;
     bool top_floor = zlev == OVERMAP_DEPTH;
-    lm.fill( four_quadrants{} );
+    // artificial light goes on top of what the sunlight pass left
+    if( map_cache.sun_uniform >= 0.0f ) {
+        lm.fill( four_quadrants( map_cache.sun_uniform ) );
+    } else {
+        lm = map_cache.sun_lm;
+    }
     sm.fill( 0 );
     map_cache.light_color_cache.fill( light_color_rgb{} );
     map_cache.has_colored_lights = false;
@@ -579,8 +621,6 @@ void map::generate_lightmap( const int zlev )
     };
 
     const float natural_light = g->natural_light_level( zlev );
-
-    build_sunlight_cache( zlev );
 
     // Dawn/dusk tint: color sunlit tiles during twilight. At this point lm
     // contains only sunlight (no artificial sources yet), so any excess over
@@ -618,9 +658,17 @@ void map::generate_lightmap( const int zlev )
         }
     }
 
-    apply_character_light( get_player_character() );
+    // each source lights only the level it stands on, when that level is built;
+    // light written here into another level would land after that level's
+    // overrides and outlive its publication
+    Character &you = get_player_character();
+    if( you.posz() == zlev ) {
+        apply_character_light( you );
+    }
     for( npc &guy : g->all_npcs() ) {
-        apply_character_light( guy );
+        if( guy.posz() == zlev ) {
+            apply_character_light( guy );
+        }
     }
 
     std::vector<std::pair<tripoint_bub_ms, float>> lm_override;
@@ -698,8 +746,8 @@ void map::generate_lightmap( const int zlev )
         if( critter.is_hallucination() ) {
             continue;
         }
-        const tripoint_bub_ms mp = critter.pos_bub();
-        if( inbounds( mp ) ) {
+        const tripoint_bub_ms mp = critter.pos_bub( *this );
+        if( inbounds( mp ) && mp.z() == zlev ) {
             if( critter.has_effect( effect_onfire ) ) {
                 apply_light_source( mp, 8 );
             }
@@ -737,7 +785,7 @@ void map::generate_lightmap( const int zlev )
             const vpart_info &vp = pt->info();
             tripoint_bub_ms src = v->bub_part_pos( *this, *pt );
 
-            if( !inbounds( src ) ) {
+            if( !inbounds( src ) || src.z() != zlev ) {
                 continue;
             }
 
@@ -787,7 +835,7 @@ void map::generate_lightmap( const int zlev )
 
         for( const vpart_reference &vpr : v->get_any_parts( VPFLAG_CARGO ) ) {
             const tripoint_bub_ms pos = vpr.pos_bub( *this );
-            if( !inbounds( pos ) || vpr.info().has_flag( "COVERED" ) ) {
+            if( !inbounds( pos ) || pos.z() != zlev || vpr.info().has_flag( "COVERED" ) ) {
                 continue;
             }
             add_light_from_items( pos, vpr.items() );
@@ -843,6 +891,8 @@ void map::generate_lightmap( const int zlev )
             }
         }
     }
+    // only place a level's light is complete, so the only one that publishes it
+    map_cache.lightmap_generation = next_cache_generation();
 }
 
 void map::add_light_source( const tripoint_bub_ms &p, float luminance,
@@ -897,6 +947,7 @@ lit_level map::light_at( const tripoint_bub_ms &p ) const
     if( !inbounds( p ) ) {
         return lit_level::DARK;    // Out of bounds
     }
+    ensure_light( p.z() );
 
     const level_cache &map_cache = get_cache_ref( p.z() );
     const auto &lm = map_cache.lm;
@@ -922,7 +973,7 @@ float map::ambient_light_at( const tripoint_bub_ms &p ) const
     if( !this->inbounds( p ) ) {
         return 0.0f;
     }
-
+    ensure_light( p.z() );
     return get_cache_ref( p.z() ).lm[p.x()][p.y()].max();
 }
 
@@ -1090,6 +1141,7 @@ bool map::pl_sees( const tripoint_bub_ms &t, const int max_range ) const
     if( !inbounds( t ) ) {
         return false;
     }
+    ensure_light( t.z() );
 
     const level_cache &map_cache = get_cache_ref( t.z() );
     Character &player_character = get_player_character();

@@ -33,7 +33,9 @@ enum class vision_layers {
     // outside, floor, transparency, sight, vision transparency, seen and
     // camera caches, plus pairwise sight answers on both traces
     scene_and_fov,
-    // also light and final visibility classification on avatar's level
+    // also light on every level, as a reader asking for it would find it
+    light,
+    // and final visibility classification on the levels the request reads
     all,
 };
 
@@ -46,8 +48,10 @@ class vision_cache_oracle
         // asks every pair once, so pairwise caches hold answers a later mutation
         // can leave stale
         void prime() const;
-        // call after the incremental build following a mutation
+        // call after the incremental build following a mutation; final
+        // visibility is compared for a request at the avatar's level, or zlev
         void check_matches_rebuild( vision_layers layers = vision_layers::all ) const;
+        void check_matches_rebuild( vision_layers layers, int zlev ) const;
     private:
         los_pairs pairs_;
 };

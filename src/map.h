@@ -1845,11 +1845,16 @@ class map
         void apply_faction_ownership( const point_bub_ms &p1, const point_bub_ms &p2,
                                       const faction_id &id );
         void do_vehicle_caching( int z );
-        // Note: in 3D mode, will actually build caches on ALL z-levels
+        // Note: in 3D mode, builds scene and view caches on ALL z-levels, and light
+        // on zlev and the levels final visibility reads
         void build_map_cache( int zlev, bool skip_lightmap = false );
         // rebuilds every vision cache from nothing; incremental build of same
         // scene must match it
         void rebuild_vision_caches_from_scratch( int zlev );
+        // avatar's level, then each level below it within fov_3d_z_range that the
+        // avatar or a camera sees part of, as of the last cast; build_map_cache
+        // keeps their light current
+        const std::vector<int> &vision_levels() const;
         // Unlike the other caches, this populates a supplied cache instead of an internal cache.
         void build_obstacle_cache(
             const tripoint_bub_ms &start, const tripoint_bub_ms &end,
@@ -2091,8 +2096,23 @@ class map
         // cover cells the avatar's posture overrides in vision_transparency_cache
         // on level zlev, with the value each takes
         std::vector<std::pair<point_bub_ms, float>> observer_vision_overrides( int zlev ) const;
-        // fills lm with sunlight. pzlev is current player's zlevel
-        void build_sunlight_cache( int pzlev );
+        // fills sun_lm of every level up to the highest populated one, and
+        // sun_uniform of the open sky above
+        void build_sunlight_cache();
+        // rebuilds sun_lm when natural light or the scene changed
+        void update_sunlight();
+        // gives level zlev sunlight alone when its light predates the last
+        // sunlight pass; light_at, ambient_light_at, pl_sees and
+        // update_visibility_cache call it, so a level build_map_cache did not
+        // light holds sunlight, never zeros
+        void ensure_light( int zlev ) const;
+        // replaces level zlev's light with its sunlight alone and publishes it
+        void set_sunlight_only( int zlev ) const;
+        void refresh_vision_levels();
+        // lowest level final visibility reads for a request at zlev
+        int lowest_vision_level( int zlev ) const;
+        // avatar's or a camera's cast reached a tile of level zlev
+        bool level_reached_by_cast( int zlev ) const;
     public:
         void build_outside_cache( int zlev );
         // Get a bitmap indicating which layers are potentially visible from the target layer.
@@ -2408,6 +2428,11 @@ class map
             }
         };
         std::vector<camera_fov_input> camera_fov_moncams;
+        // what the last sunlight pass read
+        std::vector<float> sunlight_natural_light;
+        std::vector<uint64_t> sunlight_scene_revisions;
+        // levels whose light final visibility reads; see vision_levels
+        std::vector<int> vision_levels_list;
         // light and position of every character as last lightmap saw them
         std::vector<std::pair<float, tripoint_bub_ms>> cached_char_lights;
         // sight and geometry revisions of each level as last avatar cast saw them

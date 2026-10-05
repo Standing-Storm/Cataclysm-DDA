@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <functional>
 #include <memory>
@@ -20,6 +21,7 @@
 #include "current_map.h"
 #include "enums.h"
 #include "game.h"
+#include "item.h"
 #include "level_cache.h"
 #include "lightmap.h"
 #include "map.h"
@@ -35,6 +37,7 @@
 #include "overmap_ui.h"
 #include "player_helpers.h"
 #include "point.h"
+#include "shadowcasting.h"
 #include "string_formatter.h"
 #include "teleport.h"
 #include "type_id.h"
@@ -47,14 +50,18 @@
 static const efftype_id effect_narcosis( "narcosis" );
 
 static const field_type_str_id field_fd_fire( "fd_fire" );
+static const field_type_str_id field_fd_darkness( "fd_darkness" );
 static const field_type_str_id field_fd_smoke( "fd_smoke" );
 
 static const furn_str_id furn_f_chair( "f_chair" );
 static const furn_str_id furn_test_f_translucent( "test_f_translucent" );
 
+static const itype_id itype_glowstick_lit( "glowstick_lit" );
+
 static const move_mode_id move_mode_crouch( "crouch" );
 static const move_mode_id move_mode_walk( "walk" );
 
+static const mtype_id mon_crow( "mon_crow" );
 static const mtype_id mon_test_camera( "mon_test_camera" );
 static const mtype_id mon_zombie( "mon_zombie" );
 static const mtype_id mon_zombie_electric( "mon_zombie_electric" );
@@ -1517,6 +1524,174 @@ TEST_CASE( "vision_cache_observer_transitions_match_rebuild", "[vision]" )
         build_vision_caches_incrementally();
         oracle.check_matches_rebuild( vision_layers::scene_and_fov );
         clear_vehicles();
+    }
+}
+
+// cellar the avatar looks down into through a hole beside it
+static void build_transition_cellar( const tripoint_bub_ms &origin )
+{
+    map &here = get_map();
+    const tripoint_bub_ms hole = origin + tripoint::east;
+    for( const tripoint_bub_ms &p : here.points_in_radius( hole + tripoint::below, 2 ) ) {
+        here.ter_set( p, ter_t_floor );
+    }
+    here.ter_set( hole, ter_t_open_air );
+}
+
+TEST_CASE( "vision_cache_light_transitions_match_rebuild", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    calendar::turn = midnight;
+    g->reset_light_level();
+    build_transition_cellar( origin );
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    const std::vector<int> &levels = here.vision_levels();
+    REQUIRE( std::find( levels.begin(), levels.end(), -1 ) != levels.end() );
+    oracle.prime();
+    SECTION( "a_light_in_the_cellar" ) {
+        here.ter_set( origin + tripoint_rel_ms{ 2, 1, -1 }, ter_t_utility_light );
+    }
+    SECTION( "a_colored_light_in_the_cellar" ) {
+        REQUIRE( here.add_field( origin + tripoint_rel_ms{ 2, 1, -1 }, field_fd_fire, 2 ) );
+    }
+    SECTION( "the_night_ends" ) {
+        calendar::turn = day_time;
+        g->reset_light_level();
+    }
+    build_vision_caches_incrementally();
+    oracle.check_matches_rebuild( vision_layers::light );
+}
+
+TEST_CASE( "vision_light_does_not_depend_on_build_order", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    calendar::turn = midnight;
+    g->reset_light_level();
+    build_transition_cellar( origin );
+    here.ter_set( origin + tripoint_rel_ms{ 2, 1, -1 }, ter_t_utility_light );
+    here.ter_set( origin + tripoint_rel_ms{ -2, 0, 0 }, ter_t_utility_light );
+    const auto light_after = [&]( const std::vector<int> &order ) {
+        here.rebuild_vision_caches_from_scratch( 0 );
+        for( const int z : order ) {
+            here.invalidate_map_cache( z );
+            here.build_map_cache( z );
+        }
+        using lightmaps = std::pair<cata::mdarray<four_quadrants, point_bub_ms>,
+              cata::mdarray<four_quadrants, point_bub_ms>>;
+        return std::make_unique<lightmaps>( here.access_cache( 0 ).lm, here.access_cache( -1 ).lm );
+    };
+    const auto down = light_after( { 0, -1 } );
+    const auto up = light_after( { -1, 0 } );
+    int mismatches = 0;
+    for( int x = 0; x < MAPSIZE_X; ++x ) {
+        for( int y = 0; y < MAPSIZE_Y; ++y ) {
+            mismatches += down->first[x][y].values != up->first[x][y].values;
+            mismatches += down->second[x][y].values != up->second[x][y].values;
+        }
+    }
+    CHECK( mismatches == 0 );
+}
+
+TEST_CASE( "vision_darkness_survives_light_built_for_a_lower_level", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    calendar::turn = midnight;
+    g->reset_light_level();
+    build_transition_cellar( origin );
+    player_add_headlamp();
+    REQUIRE( here.add_field( origin, field_fd_darkness, 1 ) );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    const std::vector<int> &levels = here.vision_levels();
+    REQUIRE( std::find( levels.begin(), levels.end(), -1 ) != levels.end() );
+    CHECK( here.access_cache( 0 ).lm[origin.xy()].max() == 0.0f );
+}
+
+TEST_CASE( "vision_light_is_current_on_every_level_a_reader_asks_about", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    GIVEN( "daylight over open ground, with nothing built above the avatar's level" ) {
+        here.rebuild_vision_caches_from_scratch( 0 );
+        WHEN( "crows fly one level up after an ordinary build" ) {
+            const tripoint_bub_ms sky = origin + tripoint_rel_ms{ 4, 0, 1 };
+            monster *const near = g->place_critter_at( mon_crow, sky );
+            monster *const far = g->place_critter_at( mon_crow, sky + tripoint_rel_ms{ 8, 0, 0 } );
+            REQUIRE( near != nullptr );
+            REQUIRE( far != nullptr );
+            build_vision_caches_incrementally();
+            REQUIRE( here.access_cache( 1 ).seen_cache[sky.xy()] > 0.0f );
+            THEN( "the sky there holds daylight" ) {
+                CHECK( here.ambient_light_at( sky ) > LIGHT_AMBIENT_LIT );
+            }
+            THEN( "avatar sees a crow there" ) {
+                CHECK( you.sees( here, *near ) );
+            }
+            THEN( "crows see each other" ) {
+                CHECK( near->sees( here, *far ) );
+            }
+        }
+        WHEN( "a level above the avatar's is built on request" ) {
+            const int z = GENERATE( 1, OVERMAP_HEIGHT );
+            CAPTURE( z );
+            const tripoint_bub_ms sky( origin.xy(), z );
+            here.build_map_cache( z );
+            REQUIRE( here.access_cache( z ).seen_cache[sky.xy()] > 0.0f );
+            THEN( "its sky holds natural light" ) {
+                CHECK( here.ambient_light_at( sky ) == Approx( g->natural_light_level( z ) ) );
+            }
+        }
+        WHEN( "final visibility is asked for two levels up" ) {
+            here.build_map_cache( 0 );
+            here.update_visibility_cache( 2 );
+            const tripoint_bub_ms between( origin.xy() + point::east, 1 );
+            REQUIRE( here.access_cache( 1 ).seen_cache[between.xy()] > 0.0f );
+            THEN( "the level between is lit, not dark" ) {
+                const lit_level ll = here.access_cache( 1 ).visibility_cache[between.xy()];
+                CAPTURE( static_cast<int>( ll ) );
+                CHECK( ( ll == lit_level::LIT || ll == lit_level::BRIGHT ) );
+            }
+        }
+    }
+}
+
+TEST_CASE( "vision_light_of_a_level_no_cast_reaches_drops_its_sources", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    calendar::turn = midnight;
+    g->reset_light_level();
+    build_transition_cellar( origin );
+    // same submap as origin, so moving there shifts no map
+    const tripoint_bub_ms hideout = origin + tripoint_rel_ms{ 10, 0, 0 };
+    build_transition_room( hideout );
+    const tripoint_bub_ms lamp = origin + tripoint_rel_ms{ 2, 1, -1 };
+    here.add_item( lamp, item( itype_glowstick_lit ) );
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+    GIVEN( "a cellar lit by a glowstick the avatar sees into" ) {
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const std::vector<int> &levels = here.vision_levels();
+        REQUIRE( std::find( levels.begin(), levels.end(), -1 ) != levels.end() );
+        REQUIRE( here.access_cache( -1 ).light_full );
+        oracle.prime();
+        WHEN( "avatar steps where no cast reaches the cellar and the glowstick goes" ) {
+            g->place_player( hideout );
+            here.i_clear( lamp );
+            build_vision_caches_incrementally();
+            REQUIRE( std::find( levels.begin(), levels.end(), -1 ) == levels.end() );
+            THEN( "cellar's light is what a rebuild gives, with no glowstick" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
     }
 }
 

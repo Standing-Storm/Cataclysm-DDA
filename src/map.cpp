@@ -11017,9 +11017,84 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
         }
     }
 
-    if( !skip_lightmap ) {
-        generate_lightmap( zlev );
+    if( seen_cache_dirty ) {
+        refresh_vision_levels();
     }
+    if( !skip_lightmap ) {
+        update_sunlight();
+        generate_lightmap( zlev );
+        for( const int z : vision_levels_list ) {
+            generate_lightmap( z );
+        }
+        // a level this build didn't light drops the sources it held, which
+        // nothing would rebuild while its sunlight stays the same
+        for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+            if( get_cache_ref( z ).light_full && z != zlev &&
+                std::find( vision_levels_list.begin(), vision_levels_list.end(), z ) == vision_levels_list.end() ) {
+                set_sunlight_only( z );
+            }
+        }
+    }
+}
+
+int map::lowest_vision_level( const int zlev ) const
+{
+    // avatar's view reaches fov_3d_z_range levels down from its own
+    const int avatar_z = get_avatar().posz();
+    return std::max( std::min( zlev, avatar_z - fov_3d_z_range ), -OVERMAP_DEPTH );
+}
+
+bool map::level_reached_by_cast( const int zlev ) const
+{
+    const level_cache &ch = get_cache_ref( zlev );
+    for( int x = 0; x < MAPSIZE_X; ++x ) {
+        for( int y = 0; y < MAPSIZE_Y; ++y ) {
+            if( ch.seen_cache[x][y] > 0.0f || ch.camera_cache[x][y] > 0.0f ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void map::refresh_vision_levels()
+{
+    const int avatar_z = get_avatar().posz();
+    vision_levels_list.assign( 1, avatar_z );
+    // a level below the avatar's that no cast reaches reads no light, since
+    // final visibility there is blank whatever its lightmap holds
+    for( int z = avatar_z - 1; z >= lowest_vision_level( avatar_z ); --z ) {
+        if( level_reached_by_cast( z ) ) {
+            vision_levels_list.push_back( z );
+        }
+    }
+}
+
+const std::vector<int> &map::vision_levels() const
+{
+    return vision_levels_list;
+}
+
+void map::update_sunlight()
+{
+    std::vector<float> natural_light;
+    natural_light.reserve( OVERMAP_HEIGHT + 1 );
+    for( int z = 0; z <= OVERMAP_HEIGHT; ++z ) {
+        natural_light.push_back( g->natural_light_level( z ) );
+    }
+    std::vector<uint64_t> revisions;
+    revisions.reserve( 2 * OVERMAP_LAYERS );
+    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+        const level_cache &ch = get_cache_ref( z );
+        revisions.push_back( ch.sight_revision );
+        revisions.push_back( ch.geometry_revision );
+    }
+    if( natural_light == sunlight_natural_light && revisions == sunlight_scene_revisions ) {
+        return;
+    }
+    build_sunlight_cache();
+    sunlight_natural_light = std::move( natural_light );
+    sunlight_scene_revisions = std::move( revisions );
 }
 
 void map::rebuild_vision_caches_from_scratch( const int zlev )
@@ -11038,10 +11113,19 @@ void map::rebuild_vision_caches_from_scratch( const int zlev )
     avatar_fov_range = -1;
     avatar_fov_vision_parts.clear();
     camera_fov_moncams.clear();
+    sunlight_scene_revisions.clear();
     cached_char_lights.clear();
     fov_scene_revisions = {};
     g->reset_light_level();
     build_map_cache( zlev );
+    // light for every level final visibility reads, whatever build_map_cache
+    // chose to refresh
+    refresh_vision_levels();
+    update_sunlight();
+    for( const int z : vision_levels_list ) {
+        get_cache( z ).lightmap_dirty = true;
+        generate_lightmap( z );
+    }
     invalidate_visibility_cache();
     update_visibility_cache( zlev );
 }

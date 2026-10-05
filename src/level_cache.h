@@ -29,6 +29,9 @@ uint64_t next_cache_generation();
 // in a single call instead of a bunch of fill_n which don't optimize well.
 struct level_cache_default_zero_members {
     cata::mdarray<four_quadrants, point_bub_ms> lm;
+    // sunlight alone, which every level's lm starts from; only the sunlight
+    // pass writes it
+    cata::mdarray<four_quadrants, point_bub_ms> sun_lm;
     cata::mdarray<float, point_bub_ms> sm;
     // Accumulated colored light energy per tile. Populated during generate_lightmap
     // alongside lm/sm. Zero = uncolored (white) light only.
@@ -133,9 +136,19 @@ struct level_cache : level_cache_default_zero_members {
         bool floor_cache_dirty = false;
         bool seen_cache_dirty = false;
         bool lightmap_dirty = true;
-        // set from next_cache_generation each time generate_lightmap rebuilds
-        // lm and sm; a reader compares it to tell the light changed
+        // set from next_cache_generation each time the level's light grids are
+        // replaced, by a full build or by sunlight alone; a reader compares it
+        // to tell the light changed
         uint64_t lightmap_generation = 0;
+        // set from next_cache_generation when the sunlight pass rewrites sun_lm
+        uint64_t sun_revision = 0;
+        // lm also holds the level's light sources, not just sunlight
+        bool light_full = false;
+        // light of every tile when the level lies above all populated ones and
+        // the sunlight pass left sun_lm unwritten; negative otherwise
+        float sun_uniform = -1.0f;
+        // sun_revision of the sun_lm lm was last built from
+        uint64_t lightmap_sun_revision = 0;
         // set from next_cache_generation each time update_visibility_cache
         // recomputes visibility_cache
         uint64_t visibility_generation = 0;

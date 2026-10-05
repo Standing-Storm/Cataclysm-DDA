@@ -42,6 +42,10 @@ void level_cache::clear()
     transparency_vehicle_opaque_any = false;
     sight_revision = next_cache_generation();
     geometry_revision = next_cache_generation();
+    sun_revision = next_cache_generation();
+    sun_uniform = -1.0f;
+    light_full = false;
+    lightmap_sun_revision = 0;
     no_floor_gaps = false;
 
     natural_light_level_cache = 0.0f;
