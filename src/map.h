@@ -2110,10 +2110,10 @@ class map
 
     protected:
         void generate_lightmap( int zlev );
-        void build_seen_cache( const tripoint_bub_ms &origin, int target_z,
-                               int extension_range = MAX_VIEW_DISTANCE,
-                               bool cumulative = false,
-                               bool camera = false, int penalty = 0 );
+        // casts avatar view into seen_cache, or camera view (max-merged) into
+        // camera_cache; eye_level feeds the ledge pass
+        void build_seen_cache( const tripoint_bub_ms &origin, int target_z, int extension_range,
+                               bool camera, int penalty, float eye_level );
         void apply_character_light( Character &p );
 
         int my_MAPSIZE;
@@ -2397,6 +2397,17 @@ class map
         int avatar_fov_range = -1;
         float avatar_fov_eye_level = -1.0f;
         std::vector<int> avatar_fov_vision_parts;
+        // what this map's last camera casts read of each active monster camera
+        struct camera_fov_input {
+            const monster *mon;
+            tripoint_abs_ms pos;
+            int range;
+            int size;
+            bool operator==( const camera_fov_input &o ) const {
+                return mon == o.mon && pos == o.pos && range == o.range && size == o.size;
+            }
+        };
+        std::vector<camera_fov_input> camera_fov_moncams;
         // light and position of every character as last lightmap saw them
         std::vector<std::pair<float, tripoint_bub_ms>> cached_char_lights;
         // sight and geometry revisions of each level as last avatar cast saw them

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <functional>
 #include <memory>
@@ -1517,6 +1518,125 @@ TEST_CASE( "vision_cache_observer_transitions_match_rebuild", "[vision]" )
         oracle.check_matches_rebuild( vision_layers::scene_and_fov );
         clear_vehicles();
     }
+}
+
+static monster &spawn_transition_moncam( const tripoint_bub_ms &p )
+{
+    monster *camera = g->place_critter_at( mon_test_camera, p );
+    REQUIRE( camera != nullptr );
+    camera->friendly = -1;
+    return *camera;
+}
+
+TEST_CASE( "vision_cache_camera_transitions_match_rebuild", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    you.add_moncam( { mon_test_camera, 60 } );
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+    // on the ground, or on a rooftop one level up
+    const int camera_z = GENERATE( 0, 1 );
+    CAPTURE( camera_z );
+    const tripoint_bub_ms camera_pos = origin + tripoint_rel_ms{ 4, 0, camera_z };
+    if( camera_z > 0 ) {
+        for( const tripoint_bub_ms &p : here.points_in_radius( camera_pos, 1 ) ) {
+            here.ter_set( p, ter_t_flat_roof );
+        }
+    }
+    monster &camera = spawn_transition_moncam( camera_pos );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    REQUIRE( here.access_cache( camera_z ).camera_cache[camera_pos.xy()] > 0.0f );
+    oracle.prime();
+    SECTION( "the_last_camera_leaves" ) {
+        g->remove_zombie( camera );
+    }
+    SECTION( "the_camera_moves" ) {
+        REQUIRE( camera.move_to( camera_pos + tripoint::east, true ) );
+    }
+    SECTION( "the_camera_moves_and_another_map_builds_first" ) {
+        REQUIRE( camera.move_to( camera_pos + tripoint::east, true ) );
+        smallmap far;
+        far.load( project_to<coords::omt>( you.pos_abs() ) + point_rel_omt( 20, 20 ), false );
+        far.cast_to_map()->build_map_cache( 0 );
+    }
+    build_vision_caches_incrementally();
+    oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+    you.clear_moncams();
+}
+
+TEST_CASE( "vision_avatar_cover_hides_nothing_from_other_observers", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    GIVEN( "cover beside the avatar, with a camera and a monster on each side of it" ) {
+        const tripoint_bub_ms window = origin + tripoint::south;
+        const tripoint_bub_ms camera_pos = origin + tripoint_rel_ms{ 0, -2, 0 };
+        const tripoint_bub_ms beyond = window + tripoint::south;
+        here.ter_set( window, ter_t_window_frame );
+        spawn_transition_moncam( camera_pos );
+        you.add_moncam( { mon_test_camera, 60 } );
+        monster *const near = g->place_critter_at( mon_zombie, origin + tripoint::north );
+        monster *const far = g->place_critter_at( mon_zombie, beyond );
+        REQUIRE( near != nullptr );
+        REQUIRE( far != nullptr );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const float camera_view = here.access_cache( 0 ).camera_cache[beyond.xy()];
+        REQUIRE( camera_view > 0.0f );
+        WHEN( "avatar crouches behind the cover" ) {
+            you.set_movement_mode( move_mode_crouch );
+            here.rebuild_vision_caches_from_scratch( 0 );
+            REQUIRE( here.access_cache( 0 ).vision_transparency_cache[window.xy()] ==
+                     LIGHT_TRANSPARENCY_SOLID );
+            THEN( "the camera still sees past it" ) {
+                CHECK( here.access_cache( 0 ).camera_cache[beyond.xy()] == Approx( camera_view ) );
+            }
+            THEN( "the monsters still see each other past it" ) {
+                CHECK( here.sees( near->pos_bub(), far->pos_bub(), 10 ) );
+                CHECK( near->sees( here, *far ) );
+            }
+        }
+        you.clear_moncams();
+    }
+}
+
+TEST_CASE( "vision_cameras_merge_without_erasing_each_other", "[vision]" )
+{
+    // camera on a rooftop whose ledge hides ground the other camera sees
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    const tripoint_bub_ms high = origin + tripoint_rel_ms{ 6, 0, 1 };
+    const tripoint_bub_ms low = origin + tripoint_rel_ms{ 9, 0, 0 };
+    for( const tripoint_bub_ms &p : here.points_in_radius( high, 1 ) ) {
+        here.ter_set( p, ter_t_flat_roof );
+    }
+    you.add_moncam( { mon_test_camera, 60 } );
+    const auto camera_view = [&]( const std::vector<tripoint_bub_ms> &cameras ) {
+        clear_creatures();
+        for( const tripoint_bub_ms &p : cameras ) {
+            spawn_transition_moncam( p );
+        }
+        here.rebuild_vision_caches_from_scratch( 0 );
+        return here.access_cache( 0 ).camera_cache;
+    };
+    const cata::mdarray<float, point_bub_ms> high_only = camera_view( { high } );
+    const cata::mdarray<float, point_bub_ms> low_only = camera_view( { low } );
+    const cata::mdarray<float, point_bub_ms> both = camera_view( { high, low } );
+    int mismatches = 0;
+    for( int x = 0; x < MAPSIZE_X; ++x ) {
+        for( int y = 0; y < MAPSIZE_Y; ++y ) {
+            if( both[x][y] != std::max( high_only[x][y], low_only[x][y] ) ) {
+                ++mismatches;
+            }
+        }
+    }
+    CHECK( mismatches == 0 );
+    you.clear_moncams();
 }
 
 TEST_CASE( "vision_translucent_furniture_blocks_sight_but_not_light", "[vision]" )

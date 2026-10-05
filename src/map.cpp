@@ -10935,11 +10935,16 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
     }
 
     avatar &u = get_avatar();
-    Character::moncam_cache_t mcache = u.get_active_moncams();
-    Character::moncam_cache_t diff;
-    std::set_symmetric_difference( u.moncam_cache.begin(), u.moncam_cache.end(), mcache.begin(),
-                                   mcache.end(), std::inserter( diff, diff.end() ) );
-    camera_cache_dirty |= !diff.empty();
+    const Character::moncam_cache_t mcache = u.get_active_moncams();
+    // a camera's cast reads its position, range and eye height for ledges; kept
+    // per map, so building another map consumes none of this one's changes
+    std::vector<camera_fov_input> moncams;
+    for( const Character::cached_moncam &mon : mcache ) {
+        moncams.push_back( { mon.first, mon.second, mon.first->type->vision_day,
+                             static_cast<int>( mon.first->get_size() )
+                           } );
+    }
+    camera_cache_dirty |= moncams != camera_fov_moncams;
     const tripoint_abs_ms p = get_player_character().pos_abs();
     int const sr = u.unimpaired_range();
     // avatar cast also reads eye height for ledges and the mirrors and cameras
@@ -10950,8 +10955,13 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
     seen_cache_dirty |= avatar_fov_pos != p || sr != avatar_fov_range || eye != avatar_fov_eye_level ||
                         vision_parts != avatar_fov_vision_parts || camera_cache_dirty;
     if( seen_cache_dirty ) {
+        // avatar cast writes vehicle cameras, all cameras merge into what's
+        // left, so nothing an old camera saw may survive
+        for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; z++ ) {
+            get_cache( z ).camera_cache.fill( LIGHT_TRANSPARENCY_SOLID );
+        }
         if( inbounds( p ) ) {
-            build_seen_cache( get_bub( p ), zlev, sr );
+            build_seen_cache( get_bub( p ), zlev, sr, false, 0, eye );
         }
         avatar_fov_pos = p;
         avatar_fov_range = sr;
@@ -10966,14 +10976,12 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
 #endif
     }
     if( camera_cache_dirty ) {
-        u.moncam_cache = mcache;
-        bool cumulative = seen_cache_dirty;
-        for( Character::cached_moncam const &mon : u.moncam_cache ) {
+        camera_fov_moncams = std::move( moncams );
+        for( Character::cached_moncam const &mon : mcache ) {
             if( inbounds( mon.second ) ) {
                 int const range = mon.first->type->vision_day;
-                build_seen_cache( get_bub( mon.second ), mon.second.z(), range, cumulative,
-                                  true, std::max( MAX_VIEW_DISTANCE - range, 0 ) );
-                cumulative = true;
+                build_seen_cache( get_bub( mon.second ), mon.second.z(), range, true,
+                                  std::max( MAX_VIEW_DISTANCE - range, 0 ), eye_level( *mon.first ) );
             }
         }
     }
@@ -11018,13 +11026,18 @@ void map::rebuild_vision_caches_from_scratch( const int zlev )
 {
     for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
         invalidate_map_cache( z );
-        get_cache( z ).vision_observer_overrides.clear();
+        level_cache &ch = get_cache( z );
+        ch.vision_observer_overrides.clear();
+        // what a cast doesn't reach must read as unseen, not a stale answer
+        ch.seen_cache.fill( LIGHT_TRANSPARENCY_SOLID );
+        ch.camera_cache.fill( LIGHT_TRANSPARENCY_SOLID );
     }
     for( lru_cache_t &skew_cache : skew_vision_caches ) {
         skew_cache.clear();
     }
     avatar_fov_range = -1;
     avatar_fov_vision_parts.clear();
+    camera_fov_moncams.clear();
     cached_char_lights.clear();
     fov_scene_revisions = {};
     g->reset_light_level();

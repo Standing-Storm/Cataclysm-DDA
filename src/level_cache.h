@@ -84,8 +84,10 @@ struct level_cache_default_zero_members {
     // values range from 1 (fully visible to player) to 0 (not visible)
     cata::mdarray<float, point_bub_ms> seen_cache;
 
-    // same as `seen_cache` (same units) but contains values for cameras and mirrors
-    // effective "visibility_cache" is calculated as "max(seen_cache, camera_cache)"
+    // same units as `seen_cache`: what monster and vehicle cameras transmit, each
+    // cast on its own and max-merged; mirrors the avatar sees go into seen_cache
+    // final classification reads max(seen_cache, camera_cache) with light and
+    // observer state
     cata::mdarray<float, point_bub_ms> camera_cache;
 
     // stores resulting apparent brightness to player, calculated by map::apparent_light_at

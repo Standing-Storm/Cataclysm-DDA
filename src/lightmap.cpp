@@ -305,11 +305,8 @@ std::vector<std::pair<point_bub_ms, float>> map::observer_vision_overrides( cons
     }
     // This segment handles vision when the player is crouching or prone. It only checks adjacent tiles.
     // If you change this, also consider creature::sees and map::obstacle_coverage.
-    // TODO: Is fairly nonsense because it changes vision for everyone only (eg if you @ crouch behind the window W then the NPC N and monster M can't see each other bc the window is counted as opaque)
-    // .N.
-    // .@.
-    // #W#
-    // .M.
+    // only the avatar's own cast and display read these cells; other observers trace
+    // sight_cache, so cover the avatar crouches behind hides nothing from them
     const bool low_profile = player_character.has_effect( effect_quadruped_full ) &&
                              player_character.is_running();
     if( player_character.is_crouching() || player_character.is_prone() || low_profile ) {
@@ -1308,32 +1305,36 @@ castLightAll<fragment_cloud, fragment_cloud, shrapnel_calc, shrapnel_check,
 
 /**
  * Calculates the Field Of View for the provided map from the given x, y
- * coordinates. Returns a lightmap for a result where the values represent a
- * percentage of fully lit.
+ * coordinates into seen_cache, or for a camera into camera_cache. Values
+ * represent a percentage of fully lit.
  *
  * A value equal to or below 0 means that cell is not in the
  * field of view, whereas a value equal to or above 1 means that cell is
  * in the field of view.
  *
  * @param origin the starting location
- * @param target_z Z-level to draw light map on
+ * @param target_z Z-level the origin is seeded on
+ * @param extension_range range of vehicle mirrors and cameras around origin
+ * @param camera true to cast for a camera, merged into camera_cache
+ * @param penalty distance added to the cast, shortening a camera's range
+ * @param eye_level height of the observer's eyes, for ledges
  */
 void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, int extension_range,
-                            bool cumulative, bool camera, int penalty )
+                            bool camera, int penalty, const float eye_level )
 {
     level_cache &map_cache = get_cache( target_z );
     using mdarray = cata::mdarray<float, point_bub_ms>;
     mdarray &transparency_cache = map_cache.vision_transparency_cache;
     mdarray &seen_cache = map_cache.seen_cache;
     mdarray &camera_cache = map_cache.camera_cache;
-    mdarray &out_cache = camera ? camera_cache : seen_cache;
 
     constexpr float light_transparency_solid = LIGHT_TRANSPARENCY_SOLID;
     constexpr int map_dimensions = MAPSIZE_X * MAPSIZE_Y;
-    if( !cumulative ) {
-        std::uninitialized_fill_n(
-            &camera_cache[0][0], map_dimensions, light_transparency_solid );
-    }
+    // a camera casts into its own grids and merges after its own ledge pass, so
+    // one camera's ledges never hide what another sees
+    static const std::unique_ptr<std::array<mdarray, OVERMAP_LAYERS>> camera_scratch_storage =
+                std::make_unique<std::array<mdarray, OVERMAP_LAYERS>>();
+    std::array<mdarray, OVERMAP_LAYERS> &camera_scratch = *camera_scratch_storage;
 
     // Cache the caches (pointers to them)
     array_of_grids_of<const float> transparency_caches;
@@ -1342,14 +1343,17 @@ void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, i
     vertical_direction directions_to_cast = vertical_direction::BOTH;
     for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; z++ ) {
         level_cache &cur_cache = get_cache( z );
-        transparency_caches[z + OVERMAP_DEPTH] = &cur_cache.vision_transparency_cache;
-        seen_caches[z + OVERMAP_DEPTH] = camera ? &cur_cache.camera_cache : &cur_cache.seen_cache;
+        // a camera sees past the avatar's own cover
+        transparency_caches[z + OVERMAP_DEPTH] = camera ? &cur_cache.sight_cache :
+                &cur_cache.vision_transparency_cache;
+        seen_caches[z + OVERMAP_DEPTH] = camera ? &camera_scratch[z + OVERMAP_DEPTH] :
+                                         &cur_cache.seen_cache;
         floor_caches[z + OVERMAP_DEPTH] = &cur_cache.floor_cache;
-        if( !cumulative ) {
-            std::uninitialized_fill_n(
-                &( *seen_caches[z + OVERMAP_DEPTH] )[0][0], map_dimensions, light_transparency_solid );
+        std::uninitialized_fill_n(
+            &( *seen_caches[z + OVERMAP_DEPTH] )[0][0], map_dimensions, light_transparency_solid );
+        if( !camera ) {
+            cur_cache.seen_cache_dirty = false;
         }
-        cur_cache.seen_cache_dirty = false;
         if( origin.z() == z && cur_cache.no_floor_gaps ) {
             directions_to_cast = vertical_direction::UP;
         }
@@ -1361,15 +1365,32 @@ void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, i
     cast_zlight<float, sight_calc, sight_check, accumulate_transparency>(
         seen_caches, transparency_caches, floor_caches, origin, penalty, 1.0,
         directions_to_cast );
-    const Character &player_character = get_player_character();
-    seen_cache_process_ledges( seen_caches, floor_caches, player_character.pos_bub(),
-                               eye_level( player_character ) );
-    // set here too: the early return below skips the final set after the
+    seen_cache_process_ledges( seen_caches, floor_caches, origin, eye_level );
+    // set here too: the early returns below skip the final set after the
     // mirror pass
     seen_cache_generation = next_cache_generation();
 
+    // mirrors too
+    mdarray &out_cache = camera ? camera_scratch[target_z + OVERMAP_DEPTH] : seen_cache;
+    const mdarray &mirror_transparency = camera ? map_cache.sight_cache : transparency_cache;
+    const auto merge_camera = [&]() {
+        if( !camera ) {
+            return;
+        }
+        for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; z++ ) {
+            mdarray &merged = get_cache( z ).camera_cache;
+            const mdarray &cast = camera_scratch[z + OVERMAP_DEPTH];
+            for( int x = 0; x < MAPSIZE_X; ++x ) {
+                for( int y = 0; y < MAPSIZE_Y; ++y ) {
+                    merged[x][y] = std::max( merged[x][y], cast[x][y] );
+                }
+            }
+        }
+    };
+
     const optional_vpart_position vp = veh_at( origin );
     if( !vp ) {
+        merge_camera();
         return;
     }
     vehicle *const veh = &vp->vehicle();
@@ -1422,6 +1443,9 @@ void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, i
             offsetDistance = MAX_VIEW_DISTANCE - vpi_mirror.bonus * vp_mirror.hp() / vpi_mirror.durability;
             mocache = &camera_cache;
             ( *mocache )[mirror_pos.x()][mirror_pos.y()] = LIGHT_TRANSPARENCY_OPEN_AIR;
+            castLightAll<float, float, sight_calc, sight_check, update_light, accumulate_transparency>(
+                *mocache, map_cache.sight_cache, mirror_pos.xy(), offsetDistance );
+            continue;
         }
 
         // TODO: Factor in the mirror facing and only cast in the
@@ -1430,8 +1454,9 @@ void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, i
         // The naive solution of making the mirrors act like a second player
         // at an offset appears to give reasonable results though.
         castLightAll<float, float, sight_calc, sight_check, update_light, accumulate_transparency>(
-            *mocache, transparency_cache, mirror_pos.xy(), offsetDistance );
+            *mocache, mirror_transparency, mirror_pos.xy(), offsetDistance );
     }
+    merge_camera();
     seen_cache_generation = next_cache_generation();
 }
 
