@@ -37,6 +37,12 @@ layout(set = 3, binding = 0) uniform lit_params {
     // x: light over which night vision hands over to the overexposed look;
     // y: how far a fully colored light mixes a pixel toward its color
     vec4 u_look;
+    // prefilter layout, see smooth_lighting::prefilter_layout: x, y first
+    // cell; z: cells per level; w: first level
+    ivec4 u_prefilter;
+    // x: grid steps per cell side; y: cells per level row; z: levels; w: 1
+    // for the manual lookup
+    ivec4 u_prefilter_grid;
 };
 
 // cells the cubic B-spline reads each side of the sample point, and the side

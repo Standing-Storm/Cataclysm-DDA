@@ -1,6 +1,7 @@
 // light for the smooth lighting sprite shaders, per pixel: the tile's own
-// light, or the filtered light round the pixel. smooth_lighting::reference_sample
-// is this file's sample_light in C++.
+// light, or the filtered light lit_prefilter.frag stored round the pixel.
+// smooth_lighting::reference_prefiltered_sample is this file's sample_light in
+// C++.
 //
 // include memory_presets.glsl before this file: lit_memory_rgb calls into it.
 //
@@ -10,7 +11,6 @@
 // sprite, w the row of its own cell.
 
 #include "lit_common.glsl"
-#include "lit_filter.glsl"
 
 struct lit_sample {
     // 0 at vision threshold to 1 at full light
@@ -51,6 +51,32 @@ vec3 lit_memory_rgb(vec3 rgb)
     return memory_preset(u_mode.x, rgb);
 }
 
+// prefiltered light at `local` in light map cell `cell` on `level`; the
+// manual lookup clamps its second texel to the block, as
+// smooth_lighting::prefilter_lookup_texels does
+vec4 prefiltered(ivec2 cell, int level, vec2 local)
+{
+    // outside the layout no anchor is seen: dark, neutral chroma
+    ivec2 at = ivec2(cell.x, cell.y - level * u_size.z) - u_prefilter.xy;
+    if (level < u_prefilter.w || level >= u_prefilter.w + u_prefilter_grid.z || at.x < 0 ||
+        at.x >= u_prefilter_grid.y || at.y < 0 || at.y >= u_prefilter.z) {
+        return vec4(0.0, 1.0 / 3.0, 1.0 / 3.0, 0.0);
+    }
+    int grid = u_prefilter_grid.x;
+    ivec2 origin = ivec2(at.x, (level - u_prefilter.w) * u_prefilter.z + at.y) * (grid + 1);
+    vec2 q = vec2(origin) + local * float(grid);
+    if (u_prefilter_grid.w == 0) {
+        // texel centers sit at half steps, and q stays inside its block
+        return texture(u_light, (q + 0.5) / vec2(textureSize(u_light, 0)));
+    }
+    ivec2 i0 = ivec2(floor(q));
+    vec2 w = q - vec2(i0);
+    ivec2 i1 = min(i0 + 1, origin + grid);
+    return mix(mix(texelFetch(u_light, i0, 0), texelFetch(u_light, ivec2(i1.x, i0.y), 0), w.x),
+               mix(texelFetch(u_light, ivec2(i0.x, i1.y), 0), texelFetch(u_light, i1, 0), w.x),
+               w.y);
+}
+
 lit_sample sample_light(vec4 coords)
 {
     float column = coords.z + 0.5 * u_tone.y;
@@ -77,12 +103,13 @@ lit_sample sample_light(vec4 coords)
         s.visible = own.detail ? 1.0 : 0.0;
         return s;
     }
-    filter_result r = filter_light(cell, level, local);
-    s.light = r.light;
-    s.hue = chroma_hue(r.chroma);
+    // light, red, green chroma shares, in_sight
+    vec4 r = prefiltered(cell, level, local);
+    s.light = r.x;
+    s.hue = chroma_hue(vec3(r.y, r.z, max(1.0 - r.y - r.z, 0.0)));
     // sight is per tile, so its edge is a staircase; the half contour of its
     // bilinear over same class cells cuts the corners, and a narrow band around
     // it fades the edge without dimming whole tiles
-    s.visible = smoothstep(SIGHT_EDGE_START, SIGHT_EDGE_END, r.in_sight);
+    s.visible = smoothstep(SIGHT_EDGE_START, SIGHT_EDGE_END, r.w);
     return s;
 }
