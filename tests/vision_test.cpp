@@ -21,6 +21,7 @@
 #include "current_map.h"
 #include "enums.h"
 #include "game.h"
+#include "game_constants.h"
 #include "item.h"
 #include "level_cache.h"
 #include "lightmap.h"
@@ -1225,6 +1226,9 @@ TEST_CASE( "vision_inside_meth_lab", "[shadowcasting][vision][moncam]" )
 static void set_up_transition_scene( const tripoint_bub_ms &origin )
 {
     clear_avatar();
+    avatar &you = get_avatar();
+    you.last_target_pos.reset();
+    you.recoil = MAX_RECOIL;
     clear_map_without_vision( -2, OVERMAP_HEIGHT );
     g->place_player( origin );
     // placing the avatar can load submaps with their own monsters, and safe
@@ -1563,6 +1567,172 @@ TEST_CASE( "vision_cache_light_transitions_match_rebuild", "[vision]" )
     }
     build_vision_caches_incrementally();
     oracle.check_matches_rebuild( vision_layers::light );
+}
+
+TEST_CASE( "vision_cache_final_visibility_transitions_match_rebuild", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    build_transition_room( origin );
+    map &here = get_map();
+    avatar &you = get_avatar();
+    const tripoint_bub_ms window = origin + tripoint::south;
+    const tripoint_bub_ms opening = origin + tripoint::north;
+    here.ter_set( window, ter_t_window_frame );
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+
+    SECTION( "headlamp_on" ) {
+        calendar::turn = midnight;
+        g->reset_light_level();
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        player_add_headlamp();
+    }
+    SECTION( "headlamp_off" ) {
+        calendar::turn = midnight;
+        g->reset_light_level();
+        player_add_headlamp();
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        you.clear_worn();
+    }
+    SECTION( "crouch" ) {
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        you.set_movement_mode( move_mode_crouch );
+    }
+    SECTION( "door_or_curtains" ) {
+        const ter_str_id closed = GENERATE( ter_t_door_c, ter_t_curtains );
+        const bool initially_open = GENERATE( false, true );
+        CAPTURE( closed, initially_open );
+        here.ter_set( opening, closed );
+        if( initially_open ) {
+            REQUIRE( here.open_door( you, opening, true ) );
+        }
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        if( initially_open ) {
+            REQUIRE( here.close_door( opening, true, false ) );
+        } else {
+            REQUIRE( here.open_door( you, opening, true ) );
+        }
+    }
+    SECTION( "aim" ) {
+        // far beyond the always-seen radius, and off the aim line east
+        const tripoint_bub_ms south = origin + tripoint_rel_ms{ 0, 20, 0 };
+        const auto aim_at = [&]( const tripoint_bub_ms & t ) {
+            you.last_target_pos = here.get_abs( t );
+            you.mark_aim_cache_dirty();
+        };
+        const auto south_seen = [&]() {
+            return here.access_cache( 0 ).visibility_cache[south.xy()] != lit_level::BLANK;
+        };
+        aim_at( origin + tripoint_rel_ms{ 20, 0, 0 } );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        REQUIRE( south_seen() );
+        SECTION( "aim_starts" ) {
+            oracle.prime();
+            you.recoil = 0.0;
+            build_vision_caches_incrementally();
+            CHECK_FALSE( south_seen() );
+        }
+        SECTION( "aim_stops" ) {
+            you.recoil = 0.0;
+            here.rebuild_vision_caches_from_scratch( 0 );
+            REQUIRE_FALSE( south_seen() );
+            oracle.prime();
+            you.recoil = MAX_RECOIL;
+            build_vision_caches_incrementally();
+            CHECK( south_seen() );
+        }
+        SECTION( "aim_moves_onto_the_tile" ) {
+            you.recoil = 0.0;
+            here.rebuild_vision_caches_from_scratch( 0 );
+            REQUIRE_FALSE( south_seen() );
+            oracle.prime();
+            aim_at( south );
+            build_vision_caches_incrementally();
+            CHECK( south_seen() );
+        }
+    }
+    SECTION( "the_night_ends" ) {
+        calendar::turn = midnight;
+        g->reset_light_level();
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        calendar::turn = day_time;
+        g->reset_light_level();
+    }
+    build_vision_caches_incrementally();
+    oracle.check_matches_rebuild();
+}
+
+TEST_CASE( "vision_cache_other_level_request_matches_rebuild", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    calendar::turn = midnight;
+    g->reset_light_level();
+    build_transition_cellar( origin );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    // light below, then a request for the level below alone, as looking around
+    // one level down makes
+    here.ter_set( origin + tripoint_rel_ms{ 2, 1, -1 }, ter_t_utility_light );
+    here.build_map_cache( -1 );
+    here.update_visibility_cache( -1 );
+    const cata::mdarray<lit_level, point_bub_ms> below = here.access_cache( -1 ).visibility_cache;
+    here.rebuild_vision_caches_from_scratch( 0 );
+    int mismatches = 0;
+    for( int x = 0; x < MAPSIZE_X; ++x ) {
+        for( int y = 0; y < MAPSIZE_Y; ++y ) {
+            mismatches += below[x][y] != here.access_cache( -1 ).visibility_cache[x][y];
+        }
+    }
+    CHECK( mismatches == 0 );
+}
+
+TEST_CASE( "vision_variables_describe_the_requested_level", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    GIVEN( "an avatar in daylight above a cellar it sees into" ) {
+        build_transition_cellar( origin );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const std::vector<int> &levels = here.vision_levels();
+        REQUIRE( std::find( levels.begin(), levels.end(), -1 ) != levels.end() );
+        REQUIRE( static_cast<int>( g->light_level( -1 ) ) != static_cast<int>( g->light_level( 0 ) ) );
+        WHEN( "only cellar's light changes" ) {
+            here.add_item( origin + tripoint_rel_ms{ 2, 1, -1 }, item( itype_glowstick_lit ) );
+            const uint64_t avatar_level_visibility = here.access_cache( 0 ).visibility_generation;
+            build_vision_caches_incrementally();
+            REQUIRE( here.access_cache( 0 ).visibility_generation == avatar_level_visibility );
+            THEN( "visibility variables still describe the avatar's level" ) {
+                CHECK( here.get_visibility_variables_cache().g_light_level ==
+                       static_cast<int>( g->light_level( 0 ) ) );
+            }
+        }
+    }
+}
+
+TEST_CASE( "vision_unseen_level_matches_tile_by_tile_classification", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    here.rebuild_vision_caches_from_scratch( 0 );
+    const visibility_variables &vars = here.get_visibility_variables_cache();
+    // solid rock two levels down: nothing reaches it, so it takes the shortcut
+    const int z = -2;
+    int mismatches = 0;
+    for( int x = 0; x < MAPSIZE_X; ++x ) {
+        for( int y = 0; y < MAPSIZE_Y; ++y ) {
+            const tripoint_bub_ms p( x, y, z );
+            mismatches += here.access_cache( z ).visibility_cache[x][y] != here.apparent_light_at( p, vars );
+        }
+    }
+    CHECK( mismatches == 0 );
 }
 
 TEST_CASE( "vision_light_does_not_depend_on_build_order", "[vision]" )

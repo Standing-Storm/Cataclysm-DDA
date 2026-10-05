@@ -131,13 +131,37 @@ struct visibility_variables {
     bool variables_set = false;
     bool u_sight_impaired = false;
     bool u_is_boomered = false;
-    bool visibility_cache_dirty = true;
     // Cached values for map visibility calculations
     int g_light_level = 0;
     int u_clairvoyance = 0;
     float vision_threshold = 0.0f;
     std::optional<field_type_id> clairvoyance_field;
-    tripoint_bub_ms last_pos;
+};
+
+// what map::update_visibility_cache reads for one level; it rebuilds the level
+// only when these differ from last build
+struct visibility_inputs {
+    tripoint_abs_ms pos;
+    uint64_t fov_generation = 0;
+    uint64_t lightmap_generation = 0;
+    uint64_t sight_revision = 0;
+    uint64_t forced = 0;
+    uint64_t aim_generation = 0;
+    float vision_threshold = -1.0f;
+    int clairvoyance = -1;
+    int unimpaired_range = -1;
+    int g_light_level = -1;
+    bool boomered = false;
+    bool aiming = false;
+
+    bool operator==( const visibility_inputs &o ) const {
+        return pos == o.pos && fov_generation == o.fov_generation &&
+               lightmap_generation == o.lightmap_generation && sight_revision == o.sight_revision &&
+               forced == o.forced && aim_generation == o.aim_generation &&
+               vision_threshold == o.vision_threshold && clairvoyance == o.clairvoyance &&
+               unimpaired_range == o.unimpaired_range && g_light_level == o.g_light_level &&
+               boomered == o.boomered && aiming == o.aiming;
+    }
 };
 
 struct bash_params {
@@ -2431,6 +2455,12 @@ class map
         // what the last sunlight pass read
         std::vector<float> sunlight_natural_light;
         std::vector<uint64_t> sunlight_scene_revisions;
+        // what each level's last visibility build read
+        std::array<visibility_inputs, OVERMAP_LAYERS> visibility_keys;
+        // inputs visibility_variables_cache was last set from
+        visibility_inputs visibility_variables_inputs;
+        // invalidate_visibility_cache moves it, which no key can match
+        uint64_t visibility_force_generation = 0;
         // levels whose light final visibility reads; see vision_levels
         std::vector<int> vision_levels_list;
         // light and position of every character as last lightmap saw them
@@ -2464,6 +2494,8 @@ class map
         void update_pathfinding_cache( int zlev ) const;
 
         void update_visibility_cache( int zlev );
+        // no cast reaches the level and nothing else can light a tile of it
+        bool level_reads_as_blank( int zlev, int clairvoyance ) const;
         void invalidate_visibility_cache();
         const visibility_variables &get_visibility_variables_cache() const;
         // changes each time build_seen_cache rewrites seen_cache or camera_cache
