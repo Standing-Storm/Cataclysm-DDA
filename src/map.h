@@ -528,6 +528,8 @@ class map
         void set_floor_cache_dirty( int zlev );
         // terrain, furniture, floors or vehicle parts on zlev changed
         void bump_geometry_revision( int zlev );
+        // last avatar or camera cast reached p, seen or hidden by a ledge
+        bool cast_reached( const tripoint_bub_ms &p ) const;
         void set_lightmap_cache_dirty( int zlev );
         void set_lightmap_cache_dirty_below( int zlev );
         void set_pathfinding_cache_dirty( int zlev );
@@ -2141,9 +2143,9 @@ class map
         void build_outside_cache( int zlev );
         // Get a bitmap indicating which layers are potentially visible from the target layer.
         std::bitset<OVERMAP_LAYERS> get_inter_level_visibility( int origin_zlevel )const ;
-        // Builds a floor cache and returns true if the cache was invalidated.
-        // Used to determine if seen cache should be rebuilt.
-        bool build_floor_cache( int zlev );
+        // Builds floor cache if invalidated, marks level's seen cache dirty when
+        // it does
+        void build_floor_cache( int zlev );
         // We want this visible in `game`, because we want it built earlier in the turn than the rest
         void build_floor_caches();
         // hides tiles below origin a ledge covers from an eye eye_level grids
@@ -2406,9 +2408,8 @@ class map
         // a writer marked outside, floor or transparency caches dirty since
         // last scene build
         bool scene_build_pending = true;
-        // outside, floor, vehicle, transparency and sight caches of every level;
-        // returns true when a floor cache was rebuilt
-        bool build_scene_caches();
+        // outside, floor, vehicle, transparency and sight caches of every level
+        void build_scene_caches();
         // builds scene caches only when a writer changed them, so a trace between
         // two cache builds reads the current scene; weather only scales
         // attenuation, which no trace reads
@@ -2436,7 +2437,13 @@ class map
 
         visibility_variables visibility_variables_cache;
         uint64_t seen_cache_generation = 0;
-        // what last avatar cast read, besides the scene revisions below
+        // levels a camera cast wrote camera_cache on since it was last cleared
+        std::bitset<OVERMAP_LAYERS> camera_levels_written;
+        // level_reached_by_cast answers as of level_reached_generation, the
+        // seen_cache_generation they were taken at; -1 is not asked yet
+        mutable std::array<int8_t, OVERMAP_LAYERS> level_reached = {};
+        mutable uint64_t level_reached_generation = 0;
+        // what last avatar cast read, besides scene changes it reached
         tripoint_abs_ms avatar_fov_pos;
         int avatar_fov_range = -1;
         float avatar_fov_eye_level = -1.0f;
@@ -2465,8 +2472,6 @@ class map
         std::vector<int> vision_levels_list;
         // light and position of every character as last lightmap saw them
         std::vector<std::pair<float, tripoint_bub_ms>> cached_char_lights;
-        // sight and geometry revisions of each level as last avatar cast saw them
-        std::array<std::pair<uint64_t, uint64_t>, OVERMAP_LAYERS> fov_scene_revisions = {};
 
         // caches the highest zlevel above which all zlevels are uniform
         // !value || value->first != map::abs_sub means cache is invalid

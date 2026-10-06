@@ -429,8 +429,7 @@ void map::set_seen_cache_dirty( const tripoint_bub_ms &change_location )
         if( cache.seen_cache_dirty ) {
             return;
         }
-        if( cache.seen_cache[change_location.x()][change_location.y()] != 0.0 ||
-            cache.camera_cache[change_location.x()][change_location.y()] != 0.0 ) {
+        if( cast_reached( change_location ) ) {
             cache.seen_cache_dirty = true;
         }
     }
@@ -461,6 +460,13 @@ void map::set_floor_cache_dirty( const int zlev )
         set_lightmap_cache_dirty_below( zlev );
         bump_geometry_revision( zlev );
     }
+}
+
+bool map::cast_reached( const tripoint_bub_ms &p ) const
+{
+    const level_cache &ch = get_cache_ref( p.z() );
+    return ch.seen_cache[p.x()][p.y()] > 0.0f || ch.camera_cache[p.x()][p.y()] > 0.0f ||
+           ch.ledge_hidden[p.x()][p.y()];
 }
 
 void map::bump_geometry_revision( const int zlev )
@@ -2093,6 +2099,9 @@ bool map::furn_set( const tripoint_bub_ms &p, const furn_id &new_furniture, cons
     const furn_t &old_f = old_id.obj();
     const furn_t &new_f = new_target_furniture.obj();
     bump_geometry_revision( p.z() );
+    if( cast_reached( p ) ) {
+        get_cache( p.z() ).seen_cache_dirty = true;
+    }
 
     bool result = true;
 
@@ -2135,7 +2144,6 @@ bool map::furn_set( const tripoint_bub_ms &p, const furn_id &new_furniture, cons
         old_f.has_flag( ter_furn_flag::TFLAG_TRANSLUCENT ) != new_f.has_flag(
             ter_furn_flag::TFLAG_TRANSLUCENT ) ) {
         set_transparency_cache_dirty( p );
-        set_seen_cache_dirty( p );
     }
 
     if( old_f.light_emitted != new_f.light_emitted ||
@@ -2151,7 +2159,6 @@ bool map::furn_set( const tripoint_bub_ms &p, const furn_id &new_furniture, cons
     if( old_f.has_flag( ter_furn_flag::TFLAG_NO_FLOOR ) != new_f.has_flag(
             ter_furn_flag::TFLAG_NO_FLOOR ) ) {
         set_floor_cache_dirty( p.z() );
-        set_seen_cache_dirty( p );
         get_creature_tracker().invalidate_reachability_cache();
     }
 
@@ -2608,6 +2615,9 @@ bool map::ter_set( const tripoint_bub_ms &p, const ter_id &new_terrain, bool avo
     const ter_t &old_t = old_id.obj();
     const ter_t &new_t = new_terrain.obj();
     bump_geometry_revision( p.z() );
+    if( cast_reached( p ) ) {
+        get_cache( p.z() ).seen_cache_dirty = true;
+    }
 
     if( current_submap->is_open_air( l ) ) {
         const furn_id &current_furn = current_submap->get_furn( l );
@@ -2629,7 +2639,6 @@ bool map::ter_set( const tripoint_bub_ms &p, const ter_id &new_terrain, bool avo
         old_t.has_flag( ter_furn_flag::TFLAG_TRANSLUCENT ) != new_t.has_flag(
             ter_furn_flag::TFLAG_TRANSLUCENT ) ) {
         set_transparency_cache_dirty( p );
-        set_seen_cache_dirty( p );
     }
 
     if( old_t.light_emitted != new_t.light_emitted ||
@@ -2646,7 +2655,6 @@ bool map::ter_set( const tripoint_bub_ms &p, const ter_id &new_terrain, bool avo
         set_floor_cache_dirty( p.z() );
         // It's a set, not a flag
         support_cache_dirty.insert( p );
-        set_seen_cache_dirty( p );
     }
 
     if( !new_t.liquid_source_item_id.is_null() &&
@@ -7616,7 +7624,6 @@ void map::on_field_modified( const tripoint_bub_ms &p, const field_type &fd_type
     // Dirty the transparency cache now that field processing doesn't always do it
     if( fd_type.dirty_transparency_cache || !fd_type.is_transparent() ) {
         set_transparency_cache_dirty( p, true );
-        set_seen_cache_dirty( p );
     }
 
     if( fd_type.is_dangerous() ) {
@@ -10775,11 +10782,11 @@ std::bitset<OVERMAP_LAYERS> map::get_inter_level_visibility( const int origin_zl
     return seen_levels;
 }
 
-bool map::build_floor_cache( const int zlev )
+void map::build_floor_cache( const int zlev )
 {
     auto *ch_lazy = get_cache_lazy( zlev );
     if( !ch_lazy || !ch_lazy->floor_cache_dirty ) {
-        return false;
+        return;
     }
     level_cache &ch = *ch_lazy;
 
@@ -10826,7 +10833,11 @@ bool map::build_floor_cache( const int zlev )
     }
 
     ch.floor_cache_dirty = false;
-    return zlevels;
+    // a floor gates every view across it, wherever a cast reached, so the
+    // next cache build recasts however this rebuild was reached
+    if( zlevels ) {
+        ch.seen_cache_dirty = true;
+    }
 }
 
 void map::build_floor_caches()
@@ -10899,14 +10910,13 @@ void map::do_vehicle_caching( int z )
     }
 }
 
-bool map::build_scene_caches()
+void map::build_scene_caches()
 {
     const int minz = zlevels ? -OVERMAP_DEPTH : abs_sub.z();
     const int maxz = zlevels ? OVERMAP_HEIGHT : abs_sub.z();
-    bool floor_rebuilt = false;
     for( int z = minz; z <= maxz; z++ ) {
         build_outside_cache( z );
-        floor_rebuilt |= build_floor_cache( z );
+        build_floor_cache( z );
         level_cache &ch = get_cache( z );
         if( ch.vehicle_opaque_any ) {
             ch.vehicle_opaque_cache.fill( false );
@@ -10923,7 +10933,6 @@ bool map::build_scene_caches()
         build_transparency_cache( z );
     }
     scene_build_pending = false;
-    return floor_rebuilt;
 }
 
 void map::ensure_scene_caches() const
@@ -10964,19 +10973,12 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
 {
     const int minz = zlevels ? -OVERMAP_DEPTH : zlev;
     const int maxz = zlevels ? OVERMAP_HEIGHT : zlev;
-    bool seen_cache_dirty = build_scene_caches();
+    build_scene_caches();
+    bool seen_cache_dirty = false;
     bool camera_cache_dirty = false;
     for( int z = minz; z <= maxz; z++ ) {
         seen_cache_dirty |= get_cache( z ).seen_cache_dirty;
         seen_cache_dirty |= build_vision_transparency_cache( z );
-    }
-    // scene change the avatar can't see still changes what it sees past it
-    for( int z = minz; z <= maxz; z++ ) {
-        const level_cache &ch = get_cache_ref( z );
-        std::pair<uint64_t, uint64_t> &cast = fov_scene_revisions[z + OVERMAP_DEPTH];
-        const std::pair<uint64_t, uint64_t> current( ch.sight_revision, ch.geometry_revision );
-        seen_cache_dirty |= cast != current;
-        cast = current;
     }
 
     avatar &u = get_avatar();
@@ -11003,8 +11005,16 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
         // avatar cast writes vehicle cameras, all cameras merge into what's
         // left, so nothing an old camera saw may survive
         for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; z++ ) {
-            get_cache( z ).camera_cache.fill( LIGHT_TRANSPARENCY_SOLID );
+            level_cache &ch = get_cache( z );
+            if( camera_levels_written[z + OVERMAP_DEPTH] ) {
+                ch.camera_cache.fill( LIGHT_TRANSPARENCY_SOLID );
+            }
+            for( std::bitset<MAPSIZE_Y> &row : ch.ledge_hidden ) {
+                row.reset();
+            }
         }
+        camera_levels_written.reset();
+        seen_cache_generation = next_cache_generation();
         if( inbounds( p ) ) {
             // avatar's own level, whichever level the caller asked for
             build_seen_cache( get_bub( p ), p.z(), sr, false, 0, eye );
@@ -11092,15 +11102,25 @@ int map::lowest_vision_level( const int zlev ) const
 
 bool map::level_reached_by_cast( const int zlev ) const
 {
-    const level_cache &ch = get_cache_ref( zlev );
-    for( int x = 0; x < MAPSIZE_X; ++x ) {
-        for( int y = 0; y < MAPSIZE_Y; ++y ) {
-            if( ch.seen_cache[x][y] > 0.0f || ch.camera_cache[x][y] > 0.0f ) {
-                return true;
+    // every cast moves seen_cache_generation, so one scan per level per cast
+    if( level_reached_generation != seen_cache_generation ) {
+        level_reached.fill( -1 );
+        level_reached_generation = seen_cache_generation;
+    }
+    int8_t &reached = level_reached[zlev + OVERMAP_DEPTH];
+    if( reached < 0 ) {
+        reached = 0;
+        const level_cache &ch = get_cache_ref( zlev );
+        for( int x = 0; x < MAPSIZE_X && reached == 0; ++x ) {
+            for( int y = 0; y < MAPSIZE_Y; ++y ) {
+                if( ch.seen_cache[x][y] > 0.0f || ch.camera_cache[x][y] > 0.0f ) {
+                    reached = 1;
+                    break;
+                }
             }
         }
     }
-    return false;
+    return reached > 0;
 }
 
 void map::refresh_vision_levels()
@@ -11161,7 +11181,6 @@ void map::rebuild_vision_caches_from_scratch( const int zlev )
     camera_fov_moncams.clear();
     sunlight_scene_revisions.clear();
     cached_char_lights.clear();
-    fov_scene_revisions = {};
     g->reset_light_level();
     build_map_cache( zlev );
     // light for every level final visibility reads, whatever build_map_cache

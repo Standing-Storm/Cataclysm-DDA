@@ -222,10 +222,15 @@ bool map::build_transparency_cache( const int zlev )
     bool changed = false;
     const auto write = [&]( const point_bub_ms & p, const float light, const bool light_wo_fields,
     const float sight, const bool sight_wo_fields ) {
-        changed |= transparency_cache[p.x()][p.y()] != light ||
-                   transparent_cache_wo_fields[p.x()][p.y()] != light_wo_fields ||
-                   sight_cache[p.x()][p.y()] != sight ||
-                   sight_cache_wo_fields[p.x()][p.y()] != sight_wo_fields;
+        const bool tile_changed = transparency_cache[p.x()][p.y()] != light ||
+                                  transparent_cache_wo_fields[p.x()][p.y()] != light_wo_fields ||
+                                  sight_cache[p.x()][p.y()] != sight ||
+                                  sight_cache_wo_fields[p.x()][p.y()] != sight_wo_fields;
+        changed |= tile_changed;
+        // only a change where a cast reached alters what any cast sees
+        if( tile_changed && cast_reached( tripoint_bub_ms( p, zlev ) ) ) {
+            map_cache.seen_cache_dirty = true;
+        }
         transparency_cache[p.x()][p.y()] = light;
         transparent_cache_wo_fields[p.x()][p.y()] = light_wo_fields;
         sight_cache[p.x()][p.y()] = sight;
@@ -359,7 +364,8 @@ bool map::build_vision_transparency_cache( int zlev )
                 const int x = sx + smx * SEEX;
                 for( int sy = 0; sy < SEEY; ++sy ) {
                     const int y = sy + smy * SEEY;
-                    dirty |= vision_transparency_cache[x][y] != sight_cache[x][y];
+                    dirty |= vision_transparency_cache[x][y] != sight_cache[x][y] &&
+                             cast_reached( tripoint_bub_ms( x, y, zlev ) );
                     vision_transparency_cache[x][y] = sight_cache[x][y];
                 }
             }
@@ -1432,10 +1438,15 @@ void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, i
         for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; z++ ) {
             mdarray &merged = get_cache( z ).camera_cache;
             const mdarray &cast = camera_scratch[z + OVERMAP_DEPTH];
+            bool wrote = false;
             for( int x = 0; x < MAPSIZE_X; ++x ) {
                 for( int y = 0; y < MAPSIZE_Y; ++y ) {
+                    wrote |= cast[x][y] > LIGHT_TRANSPARENCY_SOLID;
                     merged[x][y] = std::max( merged[x][y], cast[x][y] );
                 }
+            }
+            if( wrote ) {
+                camera_levels_written.set( z + OVERMAP_DEPTH );
             }
         }
     };
@@ -1494,6 +1505,7 @@ void map::build_seen_cache( const tripoint_bub_ms &origin, const int target_z, i
         } else {
             offsetDistance = MAX_VIEW_DISTANCE - vpi_mirror.bonus * vp_mirror.hp() / vpi_mirror.durability;
             mocache = &camera_cache;
+            camera_levels_written.set( target_z + OVERMAP_DEPTH );
             ( *mocache )[mirror_pos.x()][mirror_pos.y()] = LIGHT_TRANSPARENCY_OPEN_AIR;
             castLightAll<float, float, sight_calc, sight_check, update_light, accumulate_transparency>(
                 *mocache, map_cache.sight_cache, mirror_pos.xy(), offsetDistance );
@@ -1535,6 +1547,7 @@ void map::seen_cache_process_ledges( array_of_grids_of<float> &seen_caches,
                             // In which case check if it should be obscured by a ledge
                             if( ledge_coverage( origin, p, eye_level ) > 100 ) {
                                 ( *seen_caches[cache_z] )[p.x()][p.y()] = 0.0f;
+                                get_cache( sz ).ledge_hidden[p.x()][p.y()] = true;
                             }
                             break;
                         }

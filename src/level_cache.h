@@ -93,6 +93,10 @@ struct level_cache_default_zero_members {
     // observer state
     cata::mdarray<float, point_bub_ms> camera_cache;
 
+    // tiles a cast reached that the ledge pass then hid; with seen_cache and
+    // camera_cache they are what a cast read, so changes elsewhere leave it alone
+    std::array<std::bitset<MAPSIZE_Y>, MAPSIZE_X> ledge_hidden;
+
     // stores resulting apparent brightness to player, calculated by map::apparent_light_at
     cata::mdarray<lit_level, point_bub_ms> visibility_cache;
     std::bitset<MAPSIZE_X *MAPSIZE_Y> map_memory_cache_dec;

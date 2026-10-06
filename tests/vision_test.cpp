@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstdlib>
 #include <functional>
 #include <memory>
@@ -50,8 +51,8 @@
 
 static const efftype_id effect_narcosis( "narcosis" );
 
-static const field_type_str_id field_fd_fire( "fd_fire" );
 static const field_type_str_id field_fd_darkness( "fd_darkness" );
+static const field_type_str_id field_fd_fire( "fd_fire" );
 static const field_type_str_id field_fd_smoke( "fd_smoke" );
 
 static const furn_str_id furn_f_chair( "f_chair" );
@@ -2235,6 +2236,76 @@ TEST_CASE( "vision_scene_caches_place_vehicles_on_the_map_being_built", "[vision
     }
     CHECK( walls > 0 );
     here.destroy_vehicle( v );
+}
+
+TEST_CASE( "vision_cache_recasts_only_for_changes_a_cast_reached", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    build_transition_room( origin );
+    map &here = get_map();
+    const tripoint_bub_ms near_door = origin + tripoint::north;
+    const tripoint_bub_ms far_door{ 90, 90, 0 };
+    here.ter_set( near_door, ter_t_door_c );
+    here.ter_set( far_door, ter_t_door_c );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    REQUIRE( here.access_cache( 0 ).seen_cache[far_door.xy()] == 0.0f );
+    const uint64_t before = here.seen_generation();
+    SECTION( "a_door_no_cast_reaches" ) {
+        REQUIRE( here.open_door( get_avatar(), far_door, true ) );
+        build_vision_caches_incrementally();
+        CHECK( here.seen_generation() == before );
+    }
+    SECTION( "a_door_in_view" ) {
+        REQUIRE( here.open_door( get_avatar(), near_door, true ) );
+        build_vision_caches_incrementally();
+        CHECK( here.seen_generation() != before );
+    }
+    SECTION( "a_vehicle_door_in_view" ) {
+        const tripoint_bub_ms opening = origin + tripoint::east;
+        here.ter_set( opening, ter_t_floor );
+        vehicle *v = here.add_vehicle( vehicle_prototype_none, opening, 0_degrees, 0,
+                                       veh_spawn_status::UNDAMAGED );
+        REQUIRE( v != nullptr );
+        REQUIRE( v->install_part( here, point_rel_ms::zero, vpart_frame ) >= 0 );
+        const int door = v->install_part( here, point_rel_ms::zero, vpart_door_opaque );
+        REQUIRE( door >= 0 );
+        v->close( here, door );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const uint64_t closed = here.seen_generation();
+        v->open( here, door );
+        build_vision_caches_incrementally();
+        CHECK( here.seen_generation() != closed );
+        clear_vehicles();
+    }
+}
+
+TEST_CASE( "vision_floor_change_survives_an_early_scene_build", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    const tripoint_bub_ms roof = origin + tripoint::above;
+    for( const tripoint_bub_ms &p : here.points_in_radius( roof, 8 ) ) {
+        here.ter_set( p, ter_t_flat_roof );
+    }
+    here.rebuild_vision_caches_from_scratch( 0 );
+    const tripoint_bub_ms opened = roof + tripoint::east;
+    REQUIRE( here.access_cache( 1 ).seen_cache[opened.xy()] == 0.0f );
+    here.ter_set( opened, ter_t_open_air );
+    SECTION( "map_cache_build_first" ) {
+    }
+    SECTION( "sight_query_first" ) {
+        here.sees( origin, origin + tripoint::east, 5 );
+    }
+    SECTION( "floor_cache_build_first" ) {
+        here.build_floor_caches();
+    }
+    here.build_map_cache( 0 );
+    const float incremental = here.access_cache( 1 ).seen_cache[opened.xy()];
+    here.rebuild_vision_caches_from_scratch( 0 );
+    REQUIRE( here.access_cache( 1 ).seen_cache[opened.xy()] > 0.0f );
+    CHECK( incremental == here.access_cache( 1 ).seen_cache[opened.xy()] );
 }
 
 TEST_CASE( "vision_caches_of_a_freshly_loaded_map_match_the_saved_scene", "[vision]" )
