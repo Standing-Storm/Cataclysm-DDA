@@ -1716,6 +1716,24 @@ TEST_CASE( "vision_variables_describe_the_requested_level", "[vision]" )
     }
 }
 
+TEST_CASE( "vision_avatar_view_does_not_depend_on_the_level_built_first", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    build_transition_cellar( origin );
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+    here.rebuild_vision_caches_from_scratch( 0 );
+    oracle.prime();
+    // look around one level down asks for that level first
+    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+        here.invalidate_map_cache( z );
+    }
+    here.build_map_cache( -1 );
+    build_vision_caches_incrementally();
+    oracle.check_matches_rebuild();
+}
+
 TEST_CASE( "vision_unseen_level_matches_tile_by_tile_classification", "[vision]" )
 {
     const tripoint_bub_ms origin{ 60, 60, 0 };

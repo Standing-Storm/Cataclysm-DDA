@@ -11006,7 +11006,8 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
             get_cache( z ).camera_cache.fill( LIGHT_TRANSPARENCY_SOLID );
         }
         if( inbounds( p ) ) {
-            build_seen_cache( get_bub( p ), zlev, sr, false, 0, eye );
+            // avatar's own level, whichever level the caller asked for
+            build_seen_cache( get_bub( p ), p.z(), sr, false, 0, eye );
         }
         avatar_fov_pos = p;
         avatar_fov_range = sr;
