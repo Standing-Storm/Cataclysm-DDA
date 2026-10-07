@@ -1554,6 +1554,8 @@ class vehicle
          */
         tripoint_bub_ms bub_part_pos( const map &here, int index ) const;
         tripoint_bub_ms bub_part_pos( const map &here, const vehicle_part &pt ) const;
+        // levels the vehicle's parts stand on, which a ramp can make several
+        std::set<int> occupied_levels( const map &here ) const;
         tripoint_abs_ms abs_part_pos( int index ) const;
         tripoint_abs_ms abs_part_pos( const vehicle_part &pt ) const;
         /**

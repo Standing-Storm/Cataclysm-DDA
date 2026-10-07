@@ -8,6 +8,7 @@
 #include <optional>
 #include <ostream>
 #include <queue>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -794,6 +795,10 @@ std::unique_ptr<vehicle> map::detach_vehicle( vehicle *veh )
                     memory_cache_dec_set_dirty( get_bub( pt ), true );
                 }
                 get_avatar().memorize_clear_decoration( pt, "vp_" );
+            }
+            // vehicle's walls, shelter and floors go with it
+            for( const int level : veh->occupied_levels( *this ) ) {
+                on_vehicle_moved( level );
             }
             ch.vehicle_list.erase( veh );
             ch.zone_vehicles.erase( veh );

@@ -190,6 +190,11 @@ void DefaultRemovePartHandler::removed( map *here, vehicle &veh, const int part 
     }
 
     here->dirty_vehicle_list.insert( &veh );
+    // the part's walls, shelter and floor go with it, even if it was the last;
+    // its fake copy and the shelter of its neighbors may be on other levels
+    for( const int level : veh.occupied_levels( *here ) ) {
+        here->on_vehicle_moved( level );
+    }
     here->clear_vehicle_point_from_cache( &veh, part_pos );
     here->add_vehicle_to_cache( &veh );
     here->memory_cache_dec_set_dirty( part_pos, true );
@@ -3780,6 +3785,15 @@ tripoint_bub_ms vehicle::bub_part_pos( const map &here, const int index ) const
 tripoint_bub_ms vehicle::bub_part_pos( const map &here, const vehicle_part &pt ) const
 {
     return pos_bub( here ) + pt.precalc[0];
+}
+
+std::set<int> vehicle::occupied_levels( const map &here ) const
+{
+    std::set<int> levels;
+    for( const vehicle_part &vp : parts ) {
+        levels.insert( bub_part_pos( here, vp ).z() );
+    }
+    return levels;
 }
 
 tripoint_abs_ms vehicle::abs_part_pos( const int index ) const

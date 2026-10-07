@@ -42,6 +42,7 @@
 #include "shadowcasting.h"
 #include "string_formatter.h"
 #include "teleport.h"
+#include "tileray.h"
 #include "type_id.h"
 #include "units.h"
 #include "vehicle.h"
@@ -77,6 +78,7 @@ static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_floor( "t_floor" );
 static const ter_str_id ter_t_grass( "t_grass" );
 static const ter_str_id ter_t_open_air( "t_open_air" );
+static const ter_str_id ter_t_ramp_up_high( "t_ramp_up_high" );
 static const ter_str_id ter_t_utility_light( "t_utility_light" );
 static const ter_str_id ter_t_window_domestic( "t_window_domestic" );
 static const ter_str_id ter_t_window_frame( "t_window_frame" );
@@ -87,6 +89,7 @@ static const trait_id trait_MYOPIC( "MYOPIC" );
 static const vpart_id vpart_door_opaque( "door_opaque" );
 static const vpart_id vpart_frame( "frame" );
 static const vpart_id vpart_inboard_mirror( "inboard_mirror" );
+static const vpart_id vpart_seat( "seat" );
 
 static const vproto_id vehicle_prototype_meth_lab( "meth_lab" );
 static const vproto_id vehicle_prototype_none( "none" );
@@ -2081,6 +2084,136 @@ TEST_CASE( "vision_vehicle_door_opening_refreshes_reachable_zones", "[vision]" )
     REQUIRE( here.is_transparent_wo_fields( origin ) );
     CHECK( find_east() == east );
     clear_vehicles();
+}
+
+// three frames in a row facing east, so the pivot sits in the middle and not
+// under the part at the front
+static vehicle &spawn_three_frame_cart( const tripoint_bub_ms &middle )
+{
+    map &here = get_map();
+    vehicle *v = here.add_vehicle( vehicle_prototype_none, middle, 0_degrees, 0,
+                                   veh_spawn_status::UNDAMAGED );
+    REQUIRE( v != nullptr );
+    REQUIRE( v->install_part( here, point_rel_ms( -1, 0 ), vpart_frame ) >= 0 );
+    REQUIRE( v->install_part( here, point_rel_ms::zero, vpart_frame ) >= 0 );
+    REQUIRE( v->install_part( here, point_rel_ms( 1, 0 ), vpart_frame ) >= 0 );
+    return *v;
+}
+
+// rolls the cart one tile east with its front onto a ramp up, which carries the
+// front parts to the level above and leaves the rest where they were
+static void roll_front_up_a_ramp( vehicle &cart )
+{
+    map &here = get_map();
+    here.ter_set( cart.pos_bub( here ) + tripoint_rel_ms{ 2, 0, 0 }, ter_t_ramp_up_high );
+    here.rebuild_vehicle_level_caches();
+    // as a move does before displacing
+    cart.precalc_mounts( 1, cart.face.dir(), cart.pivot_point( here ) );
+    REQUIRE( here.displace_vehicle( cart, tripoint_rel_ms::east ) );
+    REQUIRE( cart.pos_bub( here ).z() == 0 );
+}
+
+TEST_CASE( "vision_scene_caches_follow_vehicle_changes", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+    GIVEN( "a closed vehicle beside the avatar" ) {
+        const tripoint_bub_ms spot = origin + tripoint_rel_ms{ 4, 0, 0 };
+        vehicle *v = here.add_vehicle( vehicle_prototype_meth_lab, spot, 0_degrees, 0,
+                                       veh_spawn_status::UNDAMAGED );
+        REQUIRE( v != nullptr );
+        for( const vpart_reference &vp : v->get_avail_parts( "OPENABLE" ) ) {
+            v->close( here, vp.part_index() );
+        }
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        WHEN( "vehicle removed" ) {
+            tripoint_bub_ms wall;
+            for( const vpart_reference &vp : v->get_avail_parts( "OPAQUE" ) ) {
+                if( !here.is_transparent( vp.pos_bub( here ) ) ) {
+                    wall = vp.pos_bub( here );
+                    break;
+                }
+            }
+            REQUIRE( wall != tripoint_bub_ms() );
+            here.destroy_vehicle( v );
+            THEN( "a sight check right away passes where its wall stood" ) {
+                CHECK( here.sees( wall + tripoint::west, wall + tripoint::east, 5 ) );
+            }
+            THEN( "incremental build matches a rebuild" ) {
+                build_vision_caches_incrementally();
+                oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+            }
+        }
+    }
+    GIVEN( "fog around a lone closed vehicle door in the open" ) {
+        scoped_weather_override fog( weather_fog );
+        const tripoint_bub_ms spot = origin + tripoint_rel_ms{ 3, 0, 0 };
+        vehicle *v = here.add_vehicle( vehicle_prototype_none, spot, 0_degrees, 0,
+                                       veh_spawn_status::UNDAMAGED );
+        REQUIRE( v != nullptr );
+        REQUIRE( v->install_part( here, point_rel_ms::zero, vpart_frame ) >= 0 );
+        const int door = v->install_part( here, point_rel_ms::zero, vpart_door_opaque );
+        REQUIRE( door >= 0 );
+        v->close( here, door );
+        here.rebuild_vehicle_level_caches();
+        here.rebuild_vision_caches_from_scratch( 0 );
+        REQUIRE_FALSE( here.access_cache( 0 ).outside_cache[spot.xy()] );
+        oracle.prime();
+        WHEN( "door opens" ) {
+            v->open( here, door );
+            build_vision_caches_incrementally();
+            THEN( "its tile is outside again, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+            }
+        }
+        clear_vehicles();
+    }
+    GIVEN( "a seat left standing over open air beside the avatar" ) {
+        const tripoint_bub_ms spot = origin + tripoint_rel_ms{ 3, 0, 0 };
+        vehicle *v = here.add_vehicle( vehicle_prototype_none, spot, 0_degrees, 0,
+                                       veh_spawn_status::UNDAMAGED );
+        REQUIRE( v != nullptr );
+        REQUIRE( v->install_part( here, point_rel_ms::zero, vpart_frame ) >= 0 );
+        REQUIRE( v->install_part( here, point_rel_ms::zero, vpart_seat ) >= 0 );
+        here.rebuild_vehicle_level_caches();
+        here.ter_set( spot, ter_t_open_air );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        REQUIRE( here.access_cache( 0 ).floor_cache[spot.xy()] );
+        oracle.prime();
+        WHEN( "its last parts are removed" ) {
+            for( int i = 0; i < v->part_count(); ++i ) {
+                v->remove_part( v->part( i ) );
+            }
+            v->part_removal_cleanup( here );
+            REQUIRE_FALSE( here.veh_at( spot ) );
+            build_vision_caches_incrementally();
+            THEN( "nothing holds a floor there, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+            }
+        }
+        clear_vehicles();
+    }
+    GIVEN( "a cart whose closed front door has rolled up a ramp" ) {
+        vehicle *v = &spawn_three_frame_cart( origin + tripoint_rel_ms{ 3, 0, 0 } );
+        const int door = v->install_part( here, point_rel_ms( 1, 0 ), vpart_door_opaque );
+        REQUIRE( door >= 0 );
+        v->close( here, door );
+        roll_front_up_a_ramp( *v );
+        REQUIRE( v->bub_part_pos( here, v->part( door ) ).z() == 1 );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        WHEN( "door opens" ) {
+            v->open( here, door );
+            build_vision_caches_incrementally();
+            THEN( "its tile is outside again, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::scene_and_fov );
+            }
+        }
+        clear_vehicles();
+    }
 }
 
 TEST_CASE( "vision_optical_los_respects_translucent_terrain", "[vision]" )
