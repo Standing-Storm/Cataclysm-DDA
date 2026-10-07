@@ -5692,24 +5692,17 @@ bool game::warn_player_maybe_anger_local_faction( bool really_bad_offense,
         bool asking_for_public_goods )
 {
     Character &player_character = get_player_character();
-    std::optional<basecamp *> bcp = overmap_buffer.find_camp(
-                                        player_character.pos_abs_omt().xy() );
-    if( !bcp ) {
+    basecamp *actual_camp = basecamp::any_claim_at( player_character.pos_abs_omt() );
+    if( !actual_camp ) {
         return true; // Nobody to piss off
     }
-    basecamp *actual_camp = *bcp;
-    if( actual_camp->get_owner()->limited_area_claim &&
-        player_character.pos_abs_omt() != actual_camp->camp_omt_pos() ) {
-        return true; // outside of claimed area
-    }
+
     if( actual_camp->allowed_access_by( player_character, asking_for_public_goods ) ) {
         return true; // You're allowed to do this anyway
     }
 
-    // The threshold for guaranteed hostility. Don't bother query/modifying relationship if they already hate us
-    // TODO: Make this magic number into a constant
-    if( actual_camp->get_owner()->likes_u < -10 ) {
-        return true;
+    if( actual_camp->get_owner()->guaranteed_hostile() ) {
+        return true; // Already trying to kill you.
     }
 
     // Else there's a camp, and we're doing something we're not supposed to! Time to warn the player.
