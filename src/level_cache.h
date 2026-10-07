@@ -136,6 +136,8 @@ struct level_cache : level_cache_default_zero_members {
         // set from next_cache_generation when terrain, furniture, floors or
         // vehicle parts on this level change; ledges and vertical sight read them
         uint64_t geometry_revision = 0;
+        // set from next_cache_generation whenever a field on the level changes
+        uint64_t field_revision = 0;
         bool outside_cache_dirty = false;
         bool floor_cache_dirty = false;
         bool seen_cache_dirty = false;

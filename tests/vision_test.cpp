@@ -52,6 +52,7 @@
 
 static const efftype_id effect_narcosis( "narcosis" );
 
+static const field_type_str_id field_fd_clairvoyant( "fd_clairvoyant" );
 static const field_type_str_id field_fd_darkness( "fd_darkness" );
 static const field_type_str_id field_fd_fire( "fd_fire" );
 static const field_type_str_id field_fd_smoke( "fd_smoke" );
@@ -1694,6 +1695,45 @@ TEST_CASE( "vision_cache_other_level_request_matches_rebuild", "[vision]" )
         }
     }
     CHECK( mismatches == 0 );
+}
+
+TEST_CASE( "vision_clairvoyant_field_shows_on_a_level_no_cast_reaches", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    GIVEN( "solid rock under the avatar, which no cast reaches" ) {
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const tripoint_bub_ms below = origin + tripoint_rel_ms{ 2, 0, -1 };
+        REQUIRE( here.access_cache( -1 ).visibility_cache[below.xy()] == lit_level::BLANK );
+        WHEN( "clairvoyant field appears there and caches build as usual" ) {
+            REQUIRE( here.add_field( below, field_fd_clairvoyant, 1 ) );
+            build_vision_caches_incrementally();
+            THEN( "its tile shows, as a rebuild has it" ) {
+                const lit_level incremental = here.access_cache( -1 ).visibility_cache[below.xy()];
+                here.rebuild_vision_caches_from_scratch( 0 );
+                CHECK( incremental == here.access_cache( -1 ).visibility_cache[below.xy()] );
+                CHECK( incremental != lit_level::BLANK );
+            }
+        }
+        WHEN( "clairvoyant field there goes away" ) {
+            REQUIRE( here.add_field( below, field_fd_clairvoyant, 1 ) );
+            here.rebuild_vision_caches_from_scratch( 0 );
+            REQUIRE( here.access_cache( -1 ).visibility_cache[below.xy()] != lit_level::BLANK );
+            SECTION( "field deleted" ) {
+                here.delete_field( below, field_fd_clairvoyant.id() );
+            }
+            SECTION( "all fields cleared" ) {
+                here.clear_fields( below );
+            }
+            build_vision_caches_incrementally();
+            // its tile is hidden again, as a rebuild has it
+            const lit_level incremental = here.access_cache( -1 ).visibility_cache[below.xy()];
+            here.rebuild_vision_caches_from_scratch( 0 );
+            CHECK( incremental == here.access_cache( -1 ).visibility_cache[below.xy()] );
+            CHECK( incremental == lit_level::BLANK );
+        }
+    }
 }
 
 TEST_CASE( "vision_variables_describe_the_requested_level", "[vision]" )

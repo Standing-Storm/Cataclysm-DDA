@@ -7599,6 +7599,7 @@ void map::delete_field( const tripoint_bub_ms &p, const field_type_id &field_to_
             --current_submap->field_count;
             curfield.remove_field( it );
             set_lightmap_cache_dirty( p.z() );
+            get_cache( p.z() ).field_revision = next_cache_generation();
             set_transparency_cache_dirty( p, true );
             break;
         }
@@ -7615,6 +7616,7 @@ void map::clear_fields( const tripoint_bub_ms &p )
     submap *const current_submap = unsafe_get_submap_at( p, l );
     current_submap->clear_fields( l );
     set_lightmap_cache_dirty( p.z() );
+    get_cache( p.z() ).field_revision = next_cache_generation();
     set_transparency_cache_dirty( p, true );
 }
 
@@ -7622,6 +7624,7 @@ void map::on_field_modified( const tripoint_bub_ms &p, const field_type &fd_type
 {
     invalidate_max_populated_zlev( p.z() );
     set_lightmap_cache_dirty( p.z() );
+    get_cache( p.z() ).field_revision = next_cache_generation();
 
     get_cache( p.z() ).field_cache.set(
         static_cast<size_t>( p.x() / SEEX ) + ( ( p.y() / SEEX ) * MAPSIZE ) );
@@ -7784,6 +7787,7 @@ void map::update_visibility_cache( const int zlev )
         visibility_inputs inputs = common;
         inputs.lightmap_generation = ch.lightmap_generation;
         inputs.sight_revision = ch.sight_revision;
+        inputs.field_revision = ch.field_revision;
         inputs.g_light_level = static_cast<int>( g->light_level( z ) );
         visibility_inputs &last = visibility_keys[z + OVERMAP_DEPTH];
         if( inputs == last ) {

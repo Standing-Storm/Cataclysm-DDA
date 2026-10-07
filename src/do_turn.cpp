@@ -762,8 +762,6 @@ bool game::do_turn()
 
     handle_progress_ui();
 
-    m.invalidate_visibility_cache();
-
     u.update_bodytemp();
     u.update_body_wetness( *weather.weather_precise );
     u.apply_wetness_morale( weather.temperature );

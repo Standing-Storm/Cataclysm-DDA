@@ -145,6 +145,8 @@ struct visibility_inputs {
     uint64_t fov_generation = 0;
     uint64_t lightmap_generation = 0;
     uint64_t sight_revision = 0;
+    // clairvoyant fields light a tile wherever no cast reaches
+    uint64_t field_revision = 0;
     uint64_t forced = 0;
     uint64_t aim_generation = 0;
     float vision_threshold = -1.0f;
@@ -157,6 +159,7 @@ struct visibility_inputs {
     bool operator==( const visibility_inputs &o ) const {
         return pos == o.pos && fov_generation == o.fov_generation &&
                lightmap_generation == o.lightmap_generation && sight_revision == o.sight_revision &&
+               field_revision == o.field_revision &&
                forced == o.forced && aim_generation == o.aim_generation &&
                vision_threshold == o.vision_threshold && clairvoyance == o.clairvoyance &&
                unimpaired_range == o.unimpaired_range && g_light_level == o.g_light_level &&

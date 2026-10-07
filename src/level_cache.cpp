@@ -42,6 +42,7 @@ void level_cache::clear()
     transparency_vehicle_opaque_any = false;
     sight_revision = next_cache_generation();
     geometry_revision = next_cache_generation();
+    field_revision = next_cache_generation();
     sun_revision = next_cache_generation();
     sun_uniform = -1.0f;
     light_full = false;
