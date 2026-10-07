@@ -4342,7 +4342,7 @@ void npc::ensure_portrait_valid()
 {
     if( !portrait_filename.is_valid() ) {
         DebugLog( D_INFO, DC_ALL ) << disp_name() << " invalid portrait " << portrait_filename.c_str();
-        if( idz->unique_portrait_filename.is_valid() ) {
+        if( idz.is_valid() && idz->unique_portrait_filename.is_valid() ) {
             portrait_filename = idz->unique_portrait_filename;
         } else {
             pick_random_portrait( this );
