@@ -1615,6 +1615,9 @@ class vehicle
         units::power engine_fuel_usage( const vehicle_part &vp ) const;
         // Returns all active, available, non-destroyed vehicle lights
         std::vector<vehicle_part *> lights();
+        // brightness every cone light of a vehicle shines at, summed over all of
+        // them with diminishing returns, whichever level each stands on
+        static float cone_light_luminance( const std::vector<vehicle_part *> &lights );
 
         void update_alternator_load( map &here );
 

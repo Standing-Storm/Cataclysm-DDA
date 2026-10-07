@@ -46,6 +46,8 @@ void level_cache::clear()
     sun_revision = next_cache_generation();
     sun_uniform = -1.0f;
     light_full = false;
+    light_changes_by_turn = false;
+    light_tint = light_color_rgb{};
     lightmap_sun_revision = 0;
     no_floor_gaps = false;
 

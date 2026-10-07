@@ -44,8 +44,32 @@ static const vproto_id vehicle_prototype_vehicle_camera_test( "vehicle_camera_te
 static const weather_type_id weather_clear( "clear" );
 static const weather_type_id weather_fog( "fog" );
 
-// Only APIs that predate the vision cache rework, so the same file measures
-// the baseline and the result.
+// Builds against the map API from before and after the vision cache rework, so
+// the same file measures the baseline and the result.
+
+// what do_turn invalidates each turn: the per-turn light hook where the map
+// has one, else every level's light and all final visibility
+namespace
+{
+struct turn_fallback {};
+struct turn_preferred : turn_fallback {};
+} // namespace
+
+template<typename Map>
+static auto start_turn( Map &here, turn_preferred ) -> decltype( here.mark_turn_light_dirty(),
+        void() )
+{
+    here.mark_turn_light_dirty();
+}
+
+template<typename Map>
+static void start_turn( Map &here, turn_fallback )
+{
+    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+        here.set_lightmap_cache_dirty( z );
+    }
+    here.invalidate_visibility_cache();
+}
 
 static void build_vision()
 {
@@ -219,8 +243,8 @@ TEST_CASE( "vision_cache_benchmark", "[.][vision][benchmark]" )
     };
 }
 
-// creatures on three floors look at each other and the avatar once a turn, after
-// the turn marks every level's light and the visibility dirty as do_turn does
+// creatures on three floors: the cache upkeep of a turn in which nothing changes,
+// and their sight checks after light and visibility were all marked dirty
 TEST_CASE( "vision_cache_creature_sight_benchmark", "[.][vision][benchmark]" )
 {
     const tripoint_bub_ms origin{ 64, 64, 0 };
@@ -247,6 +271,10 @@ TEST_CASE( "vision_cache_creature_sight_benchmark", "[.][vision][benchmark]" )
     }
     rebuild_vision_from_scratch();
 
+    BENCHMARK( "turn_with_creatures_on_three_floors" ) {
+        start_turn( here, turn_preferred{} );
+        build_vision();
+    };
     BENCHMARK( "creatures_on_three_floors_look_around" ) {
         for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
             here.set_lightmap_cache_dirty( z );

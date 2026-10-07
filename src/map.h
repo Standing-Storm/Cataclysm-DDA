@@ -563,6 +563,9 @@ class map
          * Callback invoked when a vehicle has moved.
          */
         void on_vehicle_moved( int smz );
+        // once a turn: marks dirty the light of levels whose sources change with
+        // time alone, such as a blinking lamp or a lit item burning down
+        void mark_turn_light_dirty();
 
         struct apparent_light_info {
             bool obstructed;
@@ -2473,8 +2476,17 @@ class map
         uint64_t visibility_force_generation = 0;
         // levels whose light final visibility reads; see vision_levels
         std::vector<int> vision_levels_list;
-        // light and position of every character as last lightmap saw them
-        std::vector<std::pair<float, tripoint_bub_ms>> cached_char_lights;
+        // a light source as build_map_cache last saw it
+        struct light_source_state {
+            float light;
+            tripoint_bub_ms pos;
+            // facing in whole degrees, for lamps that shine an arc
+            int dir;
+            bool operator==( const light_source_state &o ) const {
+                return light == o.light && pos == o.pos && dir == o.dir;
+            }
+        };
+        std::vector<light_source_state> cached_light_sources;
 
         // caches the highest zlevel above which all zlevels are uniform
         // !value || value->first != map::abs_sub means cache is invalid

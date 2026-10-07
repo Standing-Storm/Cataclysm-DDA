@@ -1,6 +1,7 @@
 #include "lightmap.h" // IWYU pragma: associated
 #include "shadowcasting.h" // IWYU pragma: associated
 
+#include <algorithm>
 #include <array>
 #include <bitset>
 #include <cmath>
@@ -580,11 +581,26 @@ void map::set_sunlight_only( const int zlev ) const
 void map::generate_lightmap( const int zlev )
 {
     level_cache &map_cache = get_cache( zlev );
-    if( map_cache.light_full && !map_cache.lightmap_dirty &&
+    // Dawn/dusk tint: color sunlit tiles during twilight.
+    // Weather tint: sunlight can be tinted by active weather, respecting dawn/dusk
+    const light_color_rgb twilight_tint =
+        dawn_dusk_color_for_lightmap( g->get_dimension_prefix() );
+    const light_color_rgb weather_tint = cached_weather_color();
+    const light_color_rgb ddc = {
+        std::max( twilight_tint.r, weather_tint.r ),
+        std::max( twilight_tint.g, weather_tint.g ),
+        std::max( twilight_tint.b, weather_tint.b )
+    };
+    // no writer marks a tint change dirty, so the level keeps the tint it was lit with
+    const bool same_tint = ddc.r == map_cache.light_tint.r && ddc.g == map_cache.light_tint.g &&
+                           ddc.b == map_cache.light_tint.b;
+    if( map_cache.light_full && !map_cache.lightmap_dirty && same_tint &&
         map_cache.lightmap_sun_revision == map_cache.sun_revision ) {
         return;
     }
+    map_cache.light_tint = ddc;
     map_cache.light_full = true;
+    map_cache.light_changes_by_turn = false;
     map_cache.lightmap_dirty = false;
     map_cache.lightmap_sun_revision = map_cache.sun_revision;
 
@@ -628,18 +644,8 @@ void map::generate_lightmap( const int zlev )
 
     const float natural_light = g->natural_light_level( zlev );
 
-    // Dawn/dusk tint: color sunlit tiles during twilight. At this point lm
-    // contains only sunlight (no artificial sources yet), so any excess over
-    // the indoor baseline is sunlight that reached the tile.
-    // Weather tint: sunlight can be tinted by active weather, respecting dawn/dusk
-    const light_color_rgb twilight_tint =
-        dawn_dusk_color_for_lightmap( g->get_dimension_prefix() );
-    const light_color_rgb weather_tint = cached_weather_color();
-    const light_color_rgb ddc = {
-        std::max( twilight_tint.r, weather_tint.r ),
-        std::max( twilight_tint.g, weather_tint.g ),
-        std::max( twilight_tint.b, weather_tint.b )
-    };
+    // At this point lm contains only sunlight (no artificial sources yet), so
+    // any excess over the indoor baseline is sunlight that reached the tile.
     if( ddc.is_colored() ) {
         const float outside_light = g->natural_light_level( 0 );
         const float inside_light = ( zlev >= 0 && outside_light > LIGHT_SOURCE_BRIGHT )
@@ -721,7 +727,15 @@ void map::generate_lightmap( const int zlev )
                     }
 
                     if( cur_submap->get_lum( { sx, sy } ) ) {
-                        add_light_from_items( p, i_at( p ) );
+                        const map_stack items = i_at( p );
+                        add_light_from_items( p, items );
+                        // a lit item can burn down with no notice; the tile's
+                        // light count outlives an item burnt out in place
+                        if( std::any_of( items.begin(), items.end(), []( const item & it ) {
+                        return it.is_emissive();
+                        } ) ) {
+                            map_cache.light_changes_by_turn = true;
+                        }
                     }
 
                     const ter_id &terrain = cur_submap->get_ter( { sx, sy } );
@@ -760,8 +774,7 @@ void map::generate_lightmap( const int zlev )
             // TODO: [lightmap] Attach natural light brightness to creatures
             // TODO: [lightmap] Allow creatures to have light attacks (i.e.: eyebot)
             // TODO: [lightmap] Allow creatures to have facing and arc lights
-            float critter_luminance = critter.calculate_by_enchantment( critter.type->luminance,
-                                      enchant_vals::mod::LUMINATION, true );
+            const float critter_luminance = critter.luminance();
             if( critter_luminance > 0 ) {
                 apply_light_source( mp, critter_luminance );
             }
@@ -774,18 +787,7 @@ void map::generate_lightmap( const int zlev )
         vehicle *v = vv.v;
 
         auto lights = v->lights();
-
-        float veh_luminance = 0.0f;
-        float iteration = 1.0f;
-
-        for( const vehicle_part *pt : lights ) {
-            const vpart_info &vp = pt->info();
-            if( vp.has_flag( VPFLAG_CONE_LIGHT ) ||
-                vp.has_flag( VPFLAG_WIDE_CONE_LIGHT ) ) {
-                veh_luminance += vp.bonus / iteration;
-                iteration = iteration * 1.1f;
-            }
-        }
+        const float veh_luminance = vehicle::cone_light_luminance( lights );
 
         for( const vehicle_part *pt : lights ) {
             const vpart_info &vp = pt->info();
@@ -827,6 +829,9 @@ void map::generate_lightmap( const int zlev )
 
             } else if( vp.has_flag( VPFLAG_CIRCLE_LIGHT ) ) {
                 const bool odd_turn = calendar::once_every( 2_turns );
+                if( vp.has_flag( VPFLAG_ODDTURN ) || vp.has_flag( VPFLAG_EVENTURN ) ) {
+                    map_cache.light_changes_by_turn = true;
+                }
                 if( ( odd_turn && vp.has_flag( VPFLAG_ODDTURN ) ) ||
                     ( !odd_turn && vp.has_flag( VPFLAG_EVENTURN ) ) ||
                     ( !( vp.has_flag( VPFLAG_EVENTURN ) || vp.has_flag( VPFLAG_ODDTURN ) ) ) ) {
@@ -845,6 +850,12 @@ void map::generate_lightmap( const int zlev )
                 continue;
             }
             add_light_from_items( pos, vpr.items() );
+            for( const item &it : vpr.items() ) {
+                if( it.is_emissive() ) {
+                    map_cache.light_changes_by_turn = true;
+                    break;
+                }
+            }
         }
     }
 

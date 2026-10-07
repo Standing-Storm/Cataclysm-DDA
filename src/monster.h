@@ -513,6 +513,8 @@ class monster : public Creature
         void hear_sound( const tripoint_bub_ms &source, int vol, int distance, bool provocative );
 
         bool is_hallucination() const override;    // true if the monster isn't actually real
+        // light the monster gives off by itself, with enchantments
+        float luminance() const;
 
         bool is_electrical() const override;    // true if the monster produces electric radiation
 

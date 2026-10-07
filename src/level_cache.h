@@ -150,6 +150,11 @@ struct level_cache : level_cache_default_zero_members {
         uint64_t sun_revision = 0;
         // lm also holds the level's light sources, not just sunlight
         bool light_full = false;
+        // last full build found a source that can change with no notice: a
+        // blinking lamp or a lit item
+        bool light_changes_by_turn = false;
+        // dawn, dusk and weather tint the last full build applied
+        light_color_rgb light_tint{};
         // light of every tile when the level lies above all populated ones and
         // the sunlight pass left sun_lm unwritten; negative otherwise
         float sun_uniform = -1.0f;

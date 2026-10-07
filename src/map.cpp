@@ -823,6 +823,15 @@ void map::destroy_vehicle( vehicle *veh )
     detach_vehicle( veh );
 }
 
+void map::mark_turn_light_dirty()
+{
+    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+        if( get_cache_ref( z ).light_changes_by_turn ) {
+            set_lightmap_cache_dirty( z );
+        }
+    }
+}
+
 void map::on_vehicle_moved( const int smz )
 {
     set_outside_cache_dirty( smz );
@@ -11050,11 +11059,11 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
             }
         }
     }
-    // Detect character/NPC light changes reactively.
-    // Covers equipment, effects, trade/dialogue mutations, and position changes.
+    // Light sources that change with no notice to the lightmap: characters,
+    // glowing or burning monsters, and vehicle lamps that lose power or break.
+    // A level relights only if its own sources changed.
     {
-        using char_light_state = std::pair<float, tripoint_bub_ms>;
-        auto compute = []( const Character & ch ) -> char_light_state {
+        auto character_light = []( const Character & ch ) -> light_source_state {
             float light = ch.active_light();
             if( ch.has_effect( effect_onfire ) )
             {
@@ -11063,22 +11072,68 @@ void map::build_map_cache( const int zlev, bool skip_lightmap )
             {
                 light += 4.0f;
             }
-            return { light, ch.pos_bub() };
+            return { light, ch.pos_bub(), 0 };
         };
 
-        std::vector<char_light_state> current_lights;
-        current_lights.push_back( compute( get_player_character() ) );
+        std::vector<light_source_state> current_lights;
+        current_lights.push_back( character_light( get_player_character() ) );
         for( const npc &guy : g->all_npcs() ) {
-            current_lights.push_back( compute( guy ) );
+            current_lights.push_back( character_light( guy ) );
         }
-        if( current_lights != cached_char_lights ) {
-            for( const char_light_state &s : cached_char_lights ) {
-                set_lightmap_cache_dirty( s.second.z() );
+        for( const monster &critter : g->all_monsters() ) {
+            if( critter.is_hallucination() ) {
+                continue;
             }
-            for( const char_light_state &s : current_lights ) {
-                set_lightmap_cache_dirty( s.second.z() );
+            const float light = critter.luminance() + ( critter.has_effect( effect_onfire ) ? 8.0f : 0.0f );
+            if( light > 0 ) {
+                current_lights.push_back( { light, critter.pos_bub( *this ), 0 } );
             }
-            cached_char_lights = std::move( current_lights );
+        }
+        // the level caches' vehicle lists, as walking every submap costs more
+        // than the rest of a stationary build
+        for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+            const level_cache *ch = get_cache_lazy( z );
+            if( ch == nullptr ) {
+                continue;
+            }
+            for( vehicle *v : ch->vehicle_list ) {
+                const std::vector<vehicle_part *> lights = v->lights();
+                // a cone light shines at what all of them add up to, so losing one
+                // dims the rest, on any level
+                const float cone = vehicle::cone_light_luminance( lights );
+                for( const vehicle_part *pt : lights ) {
+                    const vpart_info &info = pt->info();
+                    const bool shares = info.has_flag( VPFLAG_CONE_LIGHT ) ||
+                                        info.has_flag( VPFLAG_WIDE_CONE_LIGHT );
+                    const int dir = std::lround( units::to_degrees( v->face.dir() + pt->direction ) );
+                    current_lights.push_back( { shares ? cone : static_cast<float>( info.bonus ),
+                                                v->bub_part_pos( *this, *pt ), dir } );
+                }
+            }
+        }
+        if( current_lights != cached_light_sources ) {
+            const auto on_level = []( const std::vector<light_source_state> &all, const int z ) {
+                std::vector<light_source_state> level;
+                for( const light_source_state &s : all ) {
+                    if( s.pos.z() == z ) {
+                        level.push_back( s );
+                    }
+                }
+                return level;
+            };
+            std::set<int> levels;
+            for( const light_source_state &s : cached_light_sources ) {
+                levels.insert( s.pos.z() );
+            }
+            for( const light_source_state &s : current_lights ) {
+                levels.insert( s.pos.z() );
+            }
+            for( const int z : levels ) {
+                if( on_level( cached_light_sources, z ) != on_level( current_lights, z ) ) {
+                    set_lightmap_cache_dirty( z );
+                }
+            }
+            cached_light_sources = std::move( current_lights );
         }
     }
 
@@ -11189,7 +11244,7 @@ void map::rebuild_vision_caches_from_scratch( const int zlev )
     avatar_fov_vision_parts.clear();
     camera_fov_moncams.clear();
     sunlight_scene_revisions.clear();
-    cached_char_lights.clear();
+    cached_light_sources.clear();
     g->reset_light_level();
     build_map_cache( zlev );
     // light for every level final visibility reads, whatever build_map_cache

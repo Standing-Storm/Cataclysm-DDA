@@ -5513,6 +5513,20 @@ std::vector<vehicle_part *> vehicle::lights()
     return res;
 }
 
+float vehicle::cone_light_luminance( const std::vector<vehicle_part *> &lights )
+{
+    float luminance = 0.0f;
+    float iteration = 1.0f;
+    for( const vehicle_part *pt : lights ) {
+        const vpart_info &vp = pt->info();
+        if( vp.has_flag( VPFLAG_CONE_LIGHT ) || vp.has_flag( VPFLAG_WIDE_CONE_LIGHT ) ) {
+            luminance += vp.bonus / iteration;
+            iteration = iteration * 1.1f;
+        }
+    }
+    return luminance;
+}
+
 units::power vehicle::total_accessory_epower() const
 {
     units::power epower = 0_W;

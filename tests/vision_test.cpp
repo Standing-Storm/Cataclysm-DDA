@@ -45,12 +45,14 @@
 #include "tileray.h"
 #include "type_id.h"
 #include "units.h"
+#include "veh_type.h"
 #include "vehicle.h"
 #include "vpart_position.h"
 #include "vpart_range.h"
 #include "weather_type.h"
 
 static const efftype_id effect_narcosis( "narcosis" );
+static const efftype_id effect_onfire( "onfire" );
 
 static const field_type_str_id field_fd_clairvoyant( "fd_clairvoyant" );
 static const field_type_str_id field_fd_darkness( "fd_darkness" );
@@ -66,6 +68,7 @@ static const move_mode_id move_mode_crouch( "crouch" );
 static const move_mode_id move_mode_walk( "walk" );
 
 static const mtype_id mon_crow( "mon_crow" );
+static const mtype_id mon_leech_blossom( "mon_leech_blossom" );
 static const mtype_id mon_test_camera( "mon_test_camera" );
 static const mtype_id mon_zombie( "mon_zombie" );
 static const mtype_id mon_zombie_electric( "mon_zombie_electric" );
@@ -88,8 +91,11 @@ static const ter_str_id ter_t_window_stained_green( "t_window_stained_green" );
 static const trait_id trait_MYOPIC( "MYOPIC" );
 
 static const vpart_id vpart_door_opaque( "door_opaque" );
+static const vpart_id vpart_floodlight( "floodlight" );
 static const vpart_id vpart_frame( "frame" );
+static const vpart_id vpart_headlight( "headlight" );
 static const vpart_id vpart_inboard_mirror( "inboard_mirror" );
+static const vpart_id vpart_light_red( "light_red" );
 static const vpart_id vpart_seat( "seat" );
 
 static const vproto_id vehicle_prototype_meth_lab( "meth_lab" );
@@ -1927,6 +1933,235 @@ TEST_CASE( "vision_light_of_a_level_no_cast_reaches_drops_its_sources", "[vision
     }
 }
 
+// a lone frame carrying one enabled light part
+static vehicle &spawn_transition_lamp( const tripoint_bub_ms &p, const vpart_id &light )
+{
+    map &here = get_map();
+    vehicle *v = here.add_vehicle( vehicle_prototype_none, p, 0_degrees, 0,
+                                   veh_spawn_status::UNDAMAGED );
+    REQUIRE( v != nullptr );
+    REQUIRE( v->install_part( here, point_rel_ms::zero, vpart_frame ) >= 0 );
+    const int lamp = v->install_part( here, point_rel_ms::zero, light );
+    REQUIRE( lamp >= 0 );
+    v->part( lamp ).enabled = true;
+    here.rebuild_vehicle_level_caches();
+    return *v;
+}
+
+TEST_CASE( "vision_light_follows_sources_between_turns", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    calendar::turn = midnight;
+    g->reset_light_level();
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+    const tripoint_bub_ms spot = origin + tripoint_rel_ms{ 3, 0, 0 };
+    GIVEN( "floodlight on a cart beside the avatar" ) {
+        vehicle &cart = spawn_transition_lamp( spot, vpart_floodlight );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        WHEN( "cart rolls a tile" ) {
+            REQUIRE( here.displace_vehicle( cart, tripoint_rel_ms::east ) );
+            build_vision_caches_incrementally();
+            THEN( "light follows it, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+    }
+    GIVEN( "blinking lamp beside the avatar" ) {
+        spawn_transition_lamp( spot, vpart_light_red );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const float before = here.access_cache( 0 ).lm[spot.xy()].max();
+        WHEN( "a turn passes" ) {
+            calendar::turn += 1_turns;
+            here.mark_turn_light_dirty();
+            build_vision_caches_incrementally();
+            THEN( "the lamp has blinked, as a rebuild has it" ) {
+                CHECK( here.access_cache( 0 ).lm[spot.xy()].max() != before );
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+    }
+    GIVEN( "a monster in view" ) {
+        monster *const zombie = g->place_critter_at( mon_zombie, spot );
+        REQUIRE( zombie != nullptr );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        WHEN( "it catches fire and a turn passes" ) {
+            zombie->add_effect( effect_onfire, 5_turns );
+            here.mark_turn_light_dirty();
+            build_vision_caches_incrementally();
+            THEN( "its fire lights the area, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+    }
+    clear_vehicles();
+}
+
+// what do_turn does around the caches: the per-turn light hook, then a build
+static void pass_a_turn()
+{
+    get_map().mark_turn_light_dirty();
+    build_vision_caches_incrementally();
+}
+
+// processes items until a lit item holding a single charge has burned it
+static void burn_out_items()
+{
+    map &here = get_map();
+    for( int i = 0; i <= 30; ++i ) {
+        calendar::turn += 1_turns;
+        here.process_items();
+    }
+}
+
+static bool lit_item_at( const tripoint_bub_ms &p )
+{
+    map &here = get_map();
+    for( const item &it : here.i_at( p ) ) {
+        if( it.is_emissive() ) {
+            return true;
+        }
+    }
+    if( const std::optional<vpart_reference> cargo = here.veh_at( p ).cargo() ) {
+        for( const item &it : cargo->items() ) {
+            if( it.is_emissive() ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// settles the caches around a lit item with one charge left, burns it out
+// and passes a turn: its light is gone, as a rebuild has it
+static void check_light_after_burn_out( const vision_cache_oracle &oracle,
+                                        const tripoint_bub_ms &spot )
+{
+    get_map().rebuild_vision_caches_from_scratch( 0 );
+    oracle.prime();
+    REQUIRE( lit_item_at( spot ) );
+    burn_out_items();
+    REQUIRE_FALSE( lit_item_at( spot ) );
+    pass_a_turn();
+    oracle.check_matches_rebuild( vision_layers::light );
+    // with nothing left to burn down, a quiet turn keeps the light
+    const uint64_t lit = get_map().access_cache( spot.z() ).lightmap_generation;
+    pass_a_turn();
+    CHECK( get_map().access_cache( spot.z() ).lightmap_generation == lit );
+}
+
+TEST_CASE( "vision_light_follows_sources_that_change_without_notice", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    calendar::turn = midnight;
+    g->reset_light_level();
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+    const tripoint_bub_ms spot = origin + tripoint_rel_ms{ 3, 0, 0 };
+    GIVEN( "floodlight on a cart with no battery" ) {
+        vehicle &cart = spawn_transition_lamp( spot, vpart_floodlight );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        WHEN( "cart finds no power for it" ) {
+            // a small draw rounds to a whole kJ only now and then
+            for( int i = 0; i < 1000 && !cart.lights().empty(); ++i ) {
+                cart.power_parts( here );
+            }
+            REQUIRE( cart.lights().empty() );
+            pass_a_turn();
+            THEN( "its light is gone, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+        WHEN( "lamp is smashed" ) {
+            vehicle_part &lamp = *cart.lights().front();
+            cart.damage_direct( here, lamp, lamp.info().durability * 2 );
+            REQUIRE( cart.lights().empty() );
+            pass_a_turn();
+            THEN( "its light is gone, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+    }
+    GIVEN( "glowing monster in view" ) {
+        monster *const leech = g->place_critter_at( mon_leech_blossom, spot );
+        REQUIRE( leech != nullptr );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        WHEN( "it is removed" ) {
+            g->remove_zombie( *leech );
+            pass_a_turn();
+            THEN( "its glow is gone, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+        WHEN( "it turns into a monster that does not glow" ) {
+            leech->poly( mon_zombie );
+            pass_a_turn();
+            THEN( "its glow is gone, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+    }
+    GIVEN( "nothing glowing in view" ) {
+        here.rebuild_vision_caches_from_scratch( 0 );
+        oracle.prime();
+        WHEN( "glowing monster appears" ) {
+            REQUIRE( g->place_critter_at( mon_leech_blossom, spot ) != nullptr );
+            pass_a_turn();
+            THEN( "it glows, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+    }
+    GIVEN( "glowing monsters on the ground and in a cellar the avatar sees into" ) {
+        build_transition_cellar( origin );
+        monster *const leech = g->place_critter_at( mon_leech_blossom, spot );
+        REQUIRE( leech != nullptr );
+        REQUIRE( g->place_critter_at( mon_leech_blossom,
+                                      origin + tripoint_rel_ms{ 2, 1, -1 } ) != nullptr );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const std::vector<int> &levels = here.vision_levels();
+        REQUIRE( std::find( levels.begin(), levels.end(), -1 ) != levels.end() );
+        const uint64_t cellar_lit = here.access_cache( -1 ).lightmap_generation;
+        oracle.prime();
+        WHEN( "the one on the ground steps aside" ) {
+            leech->setpos( here, spot + tripoint::south );
+            pass_a_turn();
+            THEN( "its glow follows it, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+            THEN( "the cellar keeps its light" ) {
+                CHECK( here.access_cache( -1 ).lightmap_generation == cellar_lit );
+            }
+        }
+    }
+    GIVEN( "glowstick with one charge left" ) {
+        item glowstick( itype_glowstick_lit );
+        glowstick.ammo_set( glowstick.ammo_default(), 1 );
+        SECTION( "on the ground" ) {
+            here.add_item( spot, glowstick );
+            check_light_after_burn_out( oracle, spot );
+        }
+        SECTION( "on a seat" ) {
+            vehicle *v = here.add_vehicle( vehicle_prototype_none, spot, 0_degrees, 0,
+                                           veh_spawn_status::UNDAMAGED );
+            REQUIRE( v != nullptr );
+            REQUIRE( v->install_part( here, point_rel_ms::zero, vpart_frame ) >= 0 );
+            const int seat = v->install_part( here, point_rel_ms::zero, vpart_seat );
+            REQUIRE( seat >= 0 );
+            here.rebuild_vehicle_level_caches();
+            REQUIRE( v->add_item( here, v->part( seat ), glowstick ).has_value() );
+            check_light_after_burn_out( oracle, spot );
+        }
+    }
+    clear_vehicles();
+}
+
 static monster &spawn_transition_moncam( const tripoint_bub_ms &p )
 {
     monster *camera = g->place_critter_at( mon_test_camera, p );
@@ -2254,6 +2489,47 @@ TEST_CASE( "vision_scene_caches_follow_vehicle_changes", "[vision]" )
         }
         clear_vehicles();
     }
+}
+
+TEST_CASE( "vision_light_of_a_vehicle_split_by_a_ramp", "[vision]" )
+{
+    const tripoint_bub_ms origin{ 60, 60, 0 };
+    set_up_transition_scene( origin );
+    map &here = get_map();
+    calendar::turn = midnight;
+    g->reset_light_level();
+    const vision_cache_oracle oracle( los_pairs_around( origin, 6 ) );
+    // up on a lone roof tile, so the level above the ground is the avatar's own
+    // and the ground below is in view
+    const tripoint_bub_ms perch = origin + tripoint::above;
+    here.ter_set( perch, ter_t_flat_roof );
+    g->place_player( perch );
+    GIVEN( "a cart with a headlight at each end, its front rolled up a ramp" ) {
+        vehicle &cart = spawn_three_frame_cart( origin + tripoint_rel_ms{ 3, 0, 0 } );
+        const int front = cart.install_part( here, point_rel_ms( 1, 0 ), vpart_headlight );
+        const int back = cart.install_part( here, point_rel_ms( -1, 0 ), vpart_headlight );
+        REQUIRE( front >= 0 );
+        REQUIRE( back >= 0 );
+        cart.part( front ).enabled = true;
+        cart.part( back ).enabled = true;
+        roll_front_up_a_ramp( cart );
+        REQUIRE( cart.bub_part_pos( here, cart.part( front ) ).z() == 1 );
+        REQUIRE( cart.bub_part_pos( here, cart.part( back ) ).z() == 0 );
+        here.rebuild_vision_caches_from_scratch( 0 );
+        const std::vector<int> &levels = here.vision_levels();
+        REQUIRE( std::find( levels.begin(), levels.end(), 0 ) != levels.end() );
+        oracle.prime();
+        WHEN( "the back headlight is smashed" ) {
+            vehicle_part &lamp = cart.part( back );
+            cart.damage_direct( here, lamp, lamp.info().durability * 2 );
+            REQUIRE( cart.lights().size() == 1 );
+            pass_a_turn();
+            THEN( "the front one upstairs dims, as a rebuild has it" ) {
+                oracle.check_matches_rebuild( vision_layers::light );
+            }
+        }
+    }
+    clear_vehicles();
 }
 
 TEST_CASE( "vision_optical_los_respects_translucent_terrain", "[vision]" )
