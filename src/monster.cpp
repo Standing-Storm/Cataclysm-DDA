@@ -14,6 +14,7 @@
 
 #include "ascii_art.h"
 #include "avatar.h"
+#include "basecamp.h"
 #include "bodypart.h"
 #include "cached_options.h"
 #include "cata_imgui.h"
@@ -3305,6 +3306,20 @@ void monster::die( map *here, Creature *nkiller )
         }
     }
     if( corpse ) {
+        // We re-acquire killer here, in case of shenanigans earlier in the function (summoner kill credit assignment, etc)
+        Creature *killer = get_killer();
+        basecamp *camp = basecamp::any_claim_at( pos_abs_omt() );
+
+        // Corpse ownership priority: If on faction territory, the faction always owns the resulting corpse and items. No buts.
+        // If not in a faction's territory, the killer owns the resulting corpse and items.
+        // If no killer, or the killer is not in a faction, then it's set to unowned and is owned by the first person to pick it up. Finders keepers. (Standard spawned item rules)
+        // FIXME: Exodii quadrupeds/monsters/etc do not set ownership.
+        if( camp ) {
+            corpse->set_owner( camp->get_owner() );
+        } else if( killer && killer->as_character() ) {
+            corpse->set_owner( *killer->as_character() );
+        }
+
         corpse->process( *here, nullptr, corpse.pos_bub( *here ) );
         if( reality_bubble().inbounds( pos_abs() ) ) {
             corpse.make_active();
