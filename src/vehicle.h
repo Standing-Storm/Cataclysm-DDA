@@ -1554,6 +1554,8 @@ class vehicle
          */
         tripoint_bub_ms bub_part_pos( const map &here, int index ) const;
         tripoint_bub_ms bub_part_pos( const map &here, const vehicle_part &pt ) const;
+        // levels the vehicle's parts stand on, which a ramp can make several
+        std::set<int> occupied_levels( const map &here ) const;
         tripoint_abs_ms abs_part_pos( int index ) const;
         tripoint_abs_ms abs_part_pos( const vehicle_part &pt ) const;
         /**
@@ -1613,6 +1615,9 @@ class vehicle
         units::power engine_fuel_usage( const vehicle_part &vp ) const;
         // Returns all active, available, non-destroyed vehicle lights
         std::vector<vehicle_part *> lights();
+        // brightness every cone light of a vehicle shines at, summed over all of
+        // them with diminishing returns, whichever level each stands on
+        static float cone_light_luminance( const std::vector<vehicle_part *> &lights );
 
         void update_alternator_load( map &here );
 
@@ -2657,7 +2662,6 @@ class DefaultRemovePartHandler : public RemovePartHandler
         void set_transparency_cache_dirty( const int z ) override {
             map &here = get_map();
             here.set_transparency_cache_dirty( z );
-            here.set_seen_cache_dirty( tripoint_bub_ms::zero );
         }
         void set_floor_cache_dirty( const int z ) override {
             get_map().set_floor_cache_dirty( z );

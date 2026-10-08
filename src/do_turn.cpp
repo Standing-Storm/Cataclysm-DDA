@@ -605,9 +605,7 @@ bool game::do_turn()
     weather.update_weather();
 
     reset_light_level();
-    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; z++ ) {
-        m.set_lightmap_cache_dirty( z );
-    }
+    m.mark_turn_light_dirty();
 
     perhaps_add_random_npc( /* ignore_spawn_timers_and_rates = */ false );
 
@@ -761,8 +759,6 @@ bool game::do_turn()
     }
 
     handle_progress_ui();
-
-    m.invalidate_visibility_cache();
 
     u.update_bodytemp();
     u.update_body_wetness( *weather.weather_precise );

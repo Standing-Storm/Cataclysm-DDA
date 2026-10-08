@@ -341,8 +341,7 @@ void monster::on_move( const tripoint_abs_ms &old_pos )
         return;
     }
     g->update_zombie_pos( *this, old_pos, pos_abs() );
-    if( has_effect( effect_onfire ) ||
-        calculate_by_enchantment( type->luminance, enchant_vals::mod::LUMINATION, true ) > 0 ) {
+    if( has_effect( effect_onfire ) || luminance() > 0 ) {
         map &here = get_map();
         here.set_lightmap_cache_dirty( old_pos.z() );
         here.set_lightmap_cache_dirty( pos_bub().z() );
@@ -356,6 +355,11 @@ void monster::on_move( const tripoint_abs_ms &old_pos )
     if( has_dest() && pos_abs() == get_dest() ) {
         unset_dest();
     }
+}
+
+float monster::luminance() const
+{
+    return calculate_by_enchantment( type->luminance, enchant_vals::mod::LUMINATION, true );
 }
 
 void monster::on_effect_int_change( const efftype_id &/*eid*/, int /*intensity*/,
