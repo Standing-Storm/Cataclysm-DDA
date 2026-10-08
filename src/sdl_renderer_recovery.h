@@ -336,6 +336,13 @@ class renderer_resource_coordinator
         // skip the rebuild when only DPI or letterboxing changed.
         int display_buffer_w_ = 0;
         int display_buffer_h_ = 0;
+        // set when a resize changed the terminal layout, cleared only once the UI
+        // is told. survives a resize that bails before the UI step, whose retry
+        // sees the layout already applied
+        bool ui_relayout_pending_ = false;
+        // resizes that told the UI about a new terminal layout, counted under the
+        // test harness too, where the UI calls are skipped
+        uint64_t ui_relayout_count_ = 0;
         // Renderer creation policy, retained so a device-loss rebuild can
         // recreate with the same backend choice and track the actual
         // installed backend after any accelerated-to-software fallback.
@@ -481,6 +488,8 @@ struct renderer_recovery_test_support {
         atlas_replay_quarantine &quarantine );
     // Whether the most recently armed phase fault has fired since arming.
     static bool phase_fault_fired();
+    // how many resizes told the UI about a new terminal layout
+    static uint64_t ui_relayout_count();
 
     // Set the scaling factor and resize the hidden fixture window, then notify
     // the coordinator. The deferred resize applies on the next drain.

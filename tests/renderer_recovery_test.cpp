@@ -623,6 +623,55 @@ TEST_CASE( "renderer_coordinator_resize_failure_persists_retry", "[tiles][render
     CHECK( renderer_coordinator.is_render_allowed() );
 }
 
+TEST_CASE( "renderer_coordinator_resize_retry_keeps_ui_relayout", "[tiles][renderer_recovery]" )
+{
+    software_render_fixture fx;
+    if( !fx.available() ) {
+        WARN( "dummy SDL video backend unavailable; skipping" );
+        return;
+    }
+    int win_w = 0;
+    int win_h = 0;
+    int font_w = 0;
+    int font_h = 0;
+    int scaling = 0;
+    int min_term_w = 0;
+    int min_term_h = 0;
+    renderer_recovery_test_support::current_window_metrics( win_w, win_h, font_w, font_h, scaling,
+            min_term_w, min_term_h );
+    REQUIRE( font_w > 0 );
+    REQUIRE( font_h > 0 );
+    // bail the resize at each gate in turn. each pass grows the window by two
+    // cells, so every pass is a real terminal layout change
+    int window_w = std::max( win_w, ( min_term_w + 2 ) * font_w );
+    const int window_h = std::max( win_h, ( min_term_h + 2 ) * font_h );
+    int gates_swept = 0;
+    for( int phase = 1; phase <= 32; ++phase ) {
+        window_w += 2 * font_w;
+        CAPTURE( phase, window_w, window_h );
+        const uint64_t relayouts_before = renderer_recovery_test_support::ui_relayout_count();
+        renderer_recovery_test_support::set_scaling_and_resize_window( 1, window_w, window_h );
+        renderer_recovery_test_support::arm_phase_fail_retry( phase );
+        renderer_coordinator.drain_pending();
+        const bool fired = renderer_recovery_test_support::phase_fault_fired();
+        if( fired ) {
+            // failed attempt should not render or tell UI early
+            CHECK_FALSE( renderer_coordinator.is_render_allowed() );
+            CHECK( renderer_recovery_test_support::ui_relayout_count() == relayouts_before );
+            // next drain finishes the resize from wherever it bailed
+            renderer_coordinator.drain_pending();
+            ++gates_swept;
+        }
+        REQUIRE( renderer_coordinator.is_render_allowed() );
+        CHECK( renderer_recovery_test_support::ui_relayout_count() == relayouts_before + 1 );
+        if( !fired ) {
+            break;
+        }
+    }
+    // Gate 1 is before the layout change, the rest are after
+    CHECK( gates_swept >= 2 );
+}
+
 TEST_CASE( "renderer_coordinator_deferred_scaled_resize_rebuilds_buffer",
            "[tiles][renderer_recovery]" )
 {

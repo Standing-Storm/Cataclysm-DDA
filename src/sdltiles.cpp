@@ -2197,6 +2197,8 @@ void renderer_recovery_test_support::reset_coordinator()
     c.gpu_textures_generation_ = 0;
     c.display_buffer_w_ = 0;
     c.display_buffer_h_ = 0;
+    c.ui_relayout_pending_ = false;
+    c.ui_relayout_count_ = 0;
     c.renderer_name_.clear();
     c.software_renderer_ = false;
     c.pending_severity_.store( renderer_recovery_severity::none );
@@ -2614,6 +2616,11 @@ bool renderer_recovery_test_support::phase_fault_fired()
     return renderer_coordinator.test_phase_fault_fired_;
 }
 
+uint64_t renderer_recovery_test_support::ui_relayout_count()
+{
+    return renderer_coordinator.ui_relayout_count_;
+}
+
 void renderer_recovery_test_support::set_scaling_and_resize_window( const int scaling,
         const int window_w, const int window_h )
 {
@@ -2689,7 +2696,9 @@ bool renderer_resource_coordinator::apply_resize_only( const uint32_t serviced_r
     int logical_w = 0;
     int logical_h = 0;
     GetWindowSize( ::window.get(), &logical_w, &logical_h );
-    const bool terminal_relaid = apply_resize_layout( logical_w, logical_h );
+    if( apply_resize_layout( logical_w, logical_h ) ) {
+        ui_relayout_pending_ = true;
+    }
     const point want = compute_display_buffer_dims();
     const bool buffer_changed = !display_buffer || want.x != display_buffer_w_
                                 || want.y != display_buffer_h_;
@@ -2723,12 +2732,16 @@ bool renderer_resource_coordinator::apply_resize_only( const uint32_t serviced_r
     // predicate sees no phantom pending resize. A newer resize arriving during
     // setup keeps a higher pending epoch and is serviced on the next drain.
     planner_.acknowledge_resize( serviced_resize_epoch );
-    if( terminal_relaid && !test_mode ) {
-        // Desktop terminal layout changed: rebuild the game UI windows and mark
-        // every adaptor for resize. Skipped under the test harness, which has no
-        // game or menu UI to lay out.
-        game_ui::init_ui();
-        ui_manager::screen_resized();
+    if( ui_relayout_pending_ ) {
+        ui_relayout_pending_ = false;
+        ++ui_relayout_count_;
+        if( !test_mode ) {
+            // Terminal layout changed: rebuild the game UI windows and mark every
+            // adaptor for resize. Skipped under the test harness, which has no
+            // game or menu UI to lay out.
+            game_ui::init_ui();
+            ui_manager::screen_resized();
+        }
     }
     // The drawable can change with the buffer kept (DPI-only), so re-arm present.
     needupdate = true;
