@@ -5167,6 +5167,29 @@ static void android_request_repaint()
     ui_manager::redraw_invalidated();
 }
 
+static void reset_touch_state()
+{
+    third_finger_down_x = third_finger_curr_x = second_finger_down_x = second_finger_curr_x =
+                              finger_down_x = finger_curr_x = -1.0f;
+    third_finger_down_y = third_finger_curr_y = second_finger_down_y = second_finger_curr_y =
+                              finger_down_y = finger_curr_y = -1.0f;
+    is_two_finger_touch = false;
+    is_three_finger_touch = false;
+    finger_down_time = 0;
+    finger_repeat_time = 0;
+}
+
+// system took the touch over, e.g. for an edge gesture: drop the whole gesture
+// without sending input, or a held joystick keeps repeating
+static void cancel_touch()
+{
+    reset_touch_state();
+    is_quick_shortcut_touch = false;
+    for( SDL_FingerID &slot_id : finger_id_slots ) {
+        slot_id = INVALID_FINGER_ID;
+    }
+}
+
 // The SDL "text input active" flag can be set while the keyboard never actually
 // appeared on screen, which would wrongly hide the shortcut strip. Trust the
 // platform IME-insets report once we have one; fall back to the SDL flag only
@@ -5997,22 +6020,21 @@ static void CheckMessages()
             finger_down_time > 0 &&
             ticks - finger_down_time > static_cast<uint32_t>
             ( get_option<int>( "ANDROID_INITIAL_DELAY" ) ) ) {
-            if( ticks - finger_repeat_time > finger_repeat_delay ) {
+            // a touch the system already took over sends no further repeat; the
+            // event loop below drops it
+            if( ticks - finger_repeat_time > finger_repeat_delay && !HasEvent( CATA_FINGERCANCELED ) ) {
                 handle_finger_input( ticks );
                 finger_repeat_time = ticks;
                 // Prevent repeating inputs on the next call to this function if there is a fingerup event
                 while( SDL_PollEvent( &ev ) ) {
                     if( ev.type == CATA_FINGERUP ) {
-                        third_finger_down_x = third_finger_curr_x = second_finger_down_x = second_finger_curr_x =
-                                                  finger_down_x = finger_curr_x = -1.0f;
-                        third_finger_down_y = third_finger_curr_y = second_finger_down_y = second_finger_curr_y =
-                                                  finger_down_y = finger_curr_y = -1.0f;
-                        is_two_finger_touch = false;
-                        is_three_finger_touch = false;
-                        finger_down_time = 0;
-                        finger_repeat_time = 0;
+                        reset_touch_state();
                         finger_slot_clear( GetFingerID( ev ) );
                         // let the next call decide if needupdate should be true
+                        break;
+                    }
+                    if( ev.type == CATA_FINGERCANCELED ) {
+                        cancel_touch();
                         break;
                     }
                 }
@@ -6606,14 +6628,7 @@ static void CheckMessages()
                                 handle_finger_input( ticks );
                             }
                         }
-                        third_finger_down_x = third_finger_curr_x = second_finger_down_x = second_finger_curr_x =
-                                                  finger_down_x = finger_curr_x = -1.0f;
-                        third_finger_down_y = third_finger_curr_y = second_finger_down_y = second_finger_curr_y =
-                                                  finger_down_y = finger_curr_y = -1.0f;
-                        is_two_finger_touch = false;
-                        is_three_finger_touch = false;
-                        finger_down_time = 0;
-                        finger_repeat_time = 0;
+                        reset_touch_state();
                         // ensure virtual joystick and quick shortcuts are updated properly
                         android_request_repaint();
                         refresh_display(); // as above, but actually redraw it now as well
@@ -6636,6 +6651,10 @@ static void CheckMessages()
 
                     break;
                 }
+                case CATA_FINGERCANCELED:
+                    cancel_touch();
+                    android_request_repaint();
+                    break;
 #endif
 
                 case CATA_QUIT:
