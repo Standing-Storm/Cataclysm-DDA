@@ -1781,6 +1781,7 @@ void renderer_resource_coordinator::run_post_success_full_invalidation()
     // request a present so the rebuilt buffer reaches the screen.
     cata_cursesport::bump_curses_render_epoch();
     needupdate = true;
+    repaint_requested_ = true;
 }
 
 recipe_result renderer_resource_coordinator::recipe_targets_reset()
@@ -2232,6 +2233,15 @@ void renderer_resource_coordinator::finish_bootstrap()
     planner_.finish_bootstrap();
 }
 
+bool renderer_resource_coordinator::take_repaint_request()
+{
+    // redraw now would be refused, and the request lost with it
+    if( !is_render_allowed() ) {
+        return false;
+    }
+    return std::exchange( repaint_requested_, false );
+}
+
 bool renderer_resource_coordinator::lifecycle_paused() const
 {
     return lifecycle_state_of( lifecycle_epoch_.load() ) == lifecycle_state::paused;
@@ -2308,6 +2318,7 @@ void renderer_recovery_test_support::reset_coordinator()
     c.planner_.reset();
     c.atlas_upload_depth_ = 0;
     c.renderer_resource_generation_ = 0;
+    c.repaint_requested_ = false;
     c.renderer_instance_generation_ = 0;
     c.gpu_textures_generation_ = 0;
     c.display_buffer_w_ = 0;
@@ -5778,6 +5789,13 @@ static void CheckMessages()
     bool is_repeat = false;
 
     drain_renderer_recovery();
+    // drain blanked the buffer; nothing else draws while input waits
+    if( renderer_coordinator.take_repaint_request() ) {
+        // stdscr lies under every UI and none of them redraws it; refresh it first, or
+        // its stale render epoch makes the input wait repaint it over them later
+        catacurses::wnoutrefresh( catacurses::stdscr );
+        ui_manager::redraw_invalidated();
+    }
 
 #if defined(__ANDROID__)
     static uint32_t last_seen_visible_frame_seq = 0;

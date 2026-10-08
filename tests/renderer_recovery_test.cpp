@@ -1156,6 +1156,51 @@ TEST_CASE( "lookup_skips_a_bundle_superseded_by_a_forced_reload",
                      renderer_coordinator.textures_generation() ) );
 }
 
+TEST_CASE( "renderer_coordinator_blanking_drain_asks_for_repaint", "[tiles][renderer_recovery]" )
+{
+    software_render_fixture fx;
+    if( !fx.available() ) {
+        WARN( "dummy SDL video backend unavailable; skipping" );
+        return;
+    }
+    GIVEN( "nothing pending" ) {
+        renderer_coordinator.drain_pending();
+        THEN( "no repaint requested" ) {
+            CHECK_FALSE( renderer_coordinator.take_repaint_request() );
+        }
+    }
+    GIVEN( "a resize that rebuilds the display buffer" ) {
+        renderer_recovery_test_support::set_scaling_and_resize_window( 2, 802, 602 );
+        renderer_coordinator.drain_pending();
+        REQUIRE( renderer_coordinator.is_render_allowed() );
+        THEN( "exactly one repaint is requested" ) {
+            CHECK( renderer_coordinator.take_repaint_request() );
+            CHECK_FALSE( renderer_coordinator.take_repaint_request() );
+        }
+    }
+    GIVEN( "a blanking drain followed by another resize before any redraw" ) {
+        renderer_recovery_test_support::set_scaling_and_resize_window( 2, 802, 602 );
+        renderer_coordinator.drain_pending();
+        renderer_coordinator.notify_resize();
+        REQUIRE_FALSE( renderer_coordinator.is_render_allowed() );
+        THEN( "the repaint waits until drawing is allowed again" ) {
+            CHECK_FALSE( renderer_coordinator.take_repaint_request() );
+            renderer_coordinator.drain_pending();
+            REQUIRE( renderer_coordinator.is_render_allowed() );
+            CHECK( renderer_coordinator.take_repaint_request() );
+        }
+    }
+    GIVEN( "render targets reset" ) {
+        renderer_coordinator.request_recovery( renderer_recovery_severity::targets_reset );
+        renderer_coordinator.drain_pending();
+        REQUIRE( renderer_coordinator.is_render_allowed() );
+        THEN( "exactly one repaint is requested" ) {
+            CHECK( renderer_coordinator.take_repaint_request() );
+            CHECK_FALSE( renderer_coordinator.take_repaint_request() );
+        }
+    }
+}
+
 TEST_CASE( "imgui_font_reload_reaches_the_renderer", "[tiles][renderer_recovery]" )
 {
     software_render_fixture fx;

@@ -252,6 +252,10 @@ class renderer_resource_coordinator
         // caller can wait out a background event before draining and retrying an
         // interrupted upload.
         bool lifecycle_paused() const;
+        // true once after a drain blanked the display buffer and invalidated every
+        // UI, as soon as drawing is allowed. nothing repaints them while input
+        // waits, so the caller redraws
+        bool take_repaint_request();
 
         renderer_recovery_state state() const {
             return planner_.state();
@@ -337,6 +341,7 @@ class renderer_resource_coordinator
         // Distinct from bootstrapping, which only covers pre-base-UI startup.
         int atlas_upload_depth_ = 0;
         uint64_t renderer_resource_generation_ = 0;
+        bool repaint_requested_ = false;
         uint64_t renderer_instance_generation_ = 0;
         uint64_t gpu_textures_generation_ = 0;
         // Display-buffer dims the coordinator last built, so a resize can
