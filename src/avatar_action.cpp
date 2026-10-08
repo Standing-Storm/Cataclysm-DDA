@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <climits>
 #include <cstdlib>
+#include <functional>
 #include <map>
 #include <memory>
 #include <ostream>
@@ -60,6 +61,7 @@
 #include "uilist.h"
 #include "veh_type.h"
 #include "vehicle.h"
+#include "visitable.h"
 #include "vpart_position.h"
 
 static const efftype_id effect_amigara( "amigara" );
@@ -122,18 +124,20 @@ static bool check_water_affect_items( avatar &you )
     std::vector<item_location> destroyed;
     std::vector<item_location> wet;
 
-    for( item_location &loc : you.all_items_loc() ) {
-        if( you.has_flag( json_flag_ITEM_WATERPROOFING ) ) {
-            break;
-        } else if( loc->has_flag( flag_WATER_DISSOLVE ) && !loc.protected_from_liquids() ) {
-            dissolved.emplace_back( loc );
-        } else if( loc->has_flag( flag_WATER_BREAK ) && !loc->is_broken()
-                   && !loc.protected_from_liquids() ) {
-            destroyed.emplace_back( loc );
-        } else if( loc->has_flag( flag_WATER_BREAK_ACTIVE ) && !loc->is_broken()
-                   && !loc.protected_from_liquids() ) {
-            wet.emplace_back( loc );
-        }
+
+    if( !you.has_flag( json_flag_ITEM_WATERPROOFING ) ) {
+        you.visit_items( [&dissolved, &destroyed, &wet]( const item_location & loc ) {
+            if( loc->has_flag( flag_WATER_DISSOLVE ) && !loc.protected_from_liquids() ) {
+                dissolved.emplace_back( loc );
+            } else if( loc->has_flag( flag_WATER_BREAK ) && !loc->is_broken()
+                       && !loc.protected_from_liquids() ) {
+                destroyed.emplace_back( loc );
+            } else if( loc->has_flag( flag_WATER_BREAK_ACTIVE ) && !loc->is_broken()
+                       && !loc.protected_from_liquids() ) {
+                wet.emplace_back( loc );
+            }
+            return VisitResponse::NEXT;
+        } );
     }
 
     if( dissolved.empty() && destroyed.empty() && wet.empty() ) {
