@@ -141,6 +141,9 @@ class client
 // sizing contract when the idle-null target leaves the output reading the window.
 point imgui_frame_display_size( int display_buffer_w, int display_buffer_h,
                                 int renderer_output_w, int renderer_output_h );
+// add gui, mono and (without CJK) 1.5x gui fonts as Fonts[0], [1] and [2]
+void add_cata_fonts( ImGuiIO &io, const std::vector<font_config> &gui_typefaces,
+                     const std::vector<font_config> &mono_typefaces, bool cjk );
 #endif
 
 void point_to_imvec2( point *src, ImVec2 *dest );
