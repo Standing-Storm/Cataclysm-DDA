@@ -442,6 +442,28 @@ void cataimgui::add_cata_fonts( ImGuiIO &io, const std::vector<font_config> &gui
     }
 }
 
+void cataimgui::font_reload::request( const std::vector<font_config> &gui_typefaces,
+                                      const std::vector<font_config> &mono_typefaces )
+{
+    gui_typefaces_ = gui_typefaces;
+    mono_typefaces_ = mono_typefaces;
+    pending_ = true;
+}
+
+bool cataimgui::font_reload::apply( ImGuiIO &io, const bool cjk )
+{
+    if( !pending_ ) {
+        return false;
+    }
+    pending_ = false;
+    // Clear also nulls FontDefault and the context's font, so nothing points at the old ones
+    io.Fonts->Clear();
+    add_cata_fonts( io, gui_typefaces_, mono_typefaces_, cjk );
+    // Clear leaves the old size in the style; 0 makes NewFrame take the new Fonts[0] size
+    ImGui::GetStyle().FontSizeBase = 0.0f;
+    return true;
+}
+
 cataimgui::client::~client()
 {
     // Reverse-order teardown: renderer backend, platform backend, context.
@@ -561,6 +583,10 @@ void cataimgui::client::new_frame( int display_buffer_w, int display_buffer_h )
         // Keep the request armed if the clear was deferred by a queued recovery.
         clear_screen = false;
     }
+    fonts_reloaded_this_frame_ = false;
+    // the rebuilt atlas is a new texture; the backend creates it and drops the old one
+    fonts_reloaded_this_frame_ = font_reload_.apply( ImGui::GetIO(),
+                                 get_option<bool>( "IMGUI_LOAD_CHINESE" ) );
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
 

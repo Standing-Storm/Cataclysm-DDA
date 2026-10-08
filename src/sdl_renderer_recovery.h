@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -15,6 +16,11 @@
 #include "cata_tiles.h"
 
 class Font;
+struct font_config;
+namespace cataimgui
+{
+class client;
+} // namespace cataimgui
 namespace catacurses
 {
 class window;
@@ -557,6 +563,11 @@ struct renderer_recovery_test_support {
                                           int &paints );
     // installed test font, or null
     static Font *test_font();
+    // run `body` on an ImGui client built on the fixture renderer with the gui
+    // and mono fonts, then tear the client down
+    static void with_imgui_client( const std::vector<font_config> &gui_typefaces,
+                                   const std::vector<font_config> &mono_typefaces,
+                                   const std::function<void( cataimgui::client & )> &body );
     // cata_tiles in fixture renderer drawing with `ts`, scaled as load_tileset
     // leaves it
     static std::unique_ptr<cata_tiles> make_test_tiles( const std::shared_ptr<const tileset> &ts );

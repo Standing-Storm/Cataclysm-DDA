@@ -2325,6 +2325,15 @@ bool renderer_recovery_test_support::setup_software_renderer()
     return true;
 }
 
+void renderer_recovery_test_support::with_imgui_client(
+    const std::vector<font_config> &gui_typefaces, const std::vector<font_config> &mono_typefaces,
+    const std::function<void( cataimgui::client & )> &body )
+{
+    cataimgui::client client( renderer, window, geometry );
+    cataimgui::add_cata_fonts( ImGui::GetIO(), gui_typefaces, mono_typefaces, false );
+    body( client );
+}
+
 void renderer_recovery_test_support::teardown_software_renderer()
 {
     // font's textures go while renderer lives; its TTF_Font closes before

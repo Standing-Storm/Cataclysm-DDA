@@ -2,17 +2,23 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "cata_catch.h"
 #include "cata_imgui.h"
+#include "cata_scope_helpers.h"
 #include "cata_tiles.h"
+#include "font_loader.h"
+#include "imgui/imgui.h"
 #include "options_helpers.h"
 #include "output.h"
 #include "point.h"
 #include "sdl_renderer_recovery.h"
+#include "sdltiles.h"
 
 namespace
 {
@@ -1145,6 +1151,44 @@ TEST_CASE( "lookup_skips_a_bundle_superseded_by_a_forced_reload",
                      "synthetic_superseded_ts", "color_pixel_sepia_light",
                      renderer_coordinator.instance_generation(),
                      renderer_coordinator.textures_generation() ) );
+}
+
+TEST_CASE( "imgui_font_reload_reaches_the_renderer", "[tiles][renderer_recovery]" )
+{
+    software_render_fixture fx;
+    if( !fx.available() ) {
+        WARN( "dummy SDL video backend unavailable; skipping" );
+        return;
+    }
+    restore_on_out_of_scope restore_height( fontheight );
+    fontheight = 16;
+    const std::vector<font_config> gui = { font_config( "data/font/Roboto-Medium.ttf" ) };
+    const std::vector<font_config> mono = { font_config( "data/font/Terminus.ttf" ) };
+    renderer_recovery_test_support::with_imgui_client( gui, mono, [&]( cataimgui::client & client ) {
+        restore_on_out_of_scope restore_inner_height( fontheight );
+        ImGuiIO &io = ImGui::GetIO();
+        const auto frame_with_text = [&client]() {
+            client.new_frame( 640, 384 );
+            ImGui::Begin( "font_reload" );
+            ImGui::TextUnformatted( "MMMMMMMMMM" );
+            ImGui::End();
+            client.end_frame();
+        };
+        frame_with_text();
+        REQUIRE_FALSE( client.fonts_reloaded_this_frame() );
+        const ImTextureData *old_tex = io.Fonts->TexData;
+        fontheight = 24;
+        client.reload_fonts( gui, mono );
+        frame_with_text();
+        CHECK( client.fonts_reloaded_this_frame() );
+        CHECK( io.Fonts->Fonts[0]->LegacySize == 24.0f );
+        // the rebuilt atlas is a new texture that went through the backend
+        const ImTextureData *tex = io.Fonts->TexData;
+        REQUIRE( tex != nullptr );
+        CHECK( tex != old_tex );
+        CHECK( tex->Status == ImTextureStatus_OK );
+        CHECK( tex->GetTexID() != ImTextureID_Invalid );
+    } );
 }
 
 #endif // TILES
