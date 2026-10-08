@@ -3148,7 +3148,18 @@ void options_manager::add_options_android()
              0.01f, 0.2f, 0.03f, 0.001f, COPT_NO_HIDE, "%.3f"
            );
 
-        add( "ANDROID_REPEAT_DELAY_RANGE", page_id, to_translation( "Virtual joystick size" ),
+        add( "ANDROID_JOYSTICK_SCALE", page_id, to_translation( "Virtual joystick scale" ),
+             to_translation( "Multiplies the virtual joystick deadzone size and speed-up range.  The drawn joystick scales with them." ),
+             0.25f, 4.0f, 1.0f, 0.05f, COPT_NO_HIDE, "%.2f"
+           );
+
+        add( "ANDROID_JOYSTICK_STRAIGHT_ANGLE", page_id,
+             to_translation( "Virtual joystick straight direction angle" ),
+             to_translation( "Width in degrees of the virtual joystick area that moves straight up, down, left or right.  The diagonal areas take the rest of each quarter turn.  90 disables diagonal movement." ),
+             10.0f, 90.0f, 53.13f, 1.0f, COPT_NO_HIDE, "%.2f"
+           );
+
+        add( "ANDROID_REPEAT_DELAY_RANGE", page_id, to_translation( "Virtual joystick speed-up range" ),
              to_translation( "While using the virtual joystick, deflecting the stick by this much will repeat input at the deflected rate (see below).  Specified as a percentage of longest screen edge." ),
              0.05f, 0.5f, 0.10f, 0.001f, COPT_NO_HIDE, "%.3f"
            );

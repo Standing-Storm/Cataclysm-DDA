@@ -80,6 +80,7 @@
 #include "sdlsound.h"
 #include "string_formatter.h"
 #include "terminal_layout.h" // IWYU pragma: keep
+#include "touch_joystick.h" // IWYU pragma: keep
 #include "uistate.h"
 #include "ui_manager.h"
 #include "wcwidth.h"
@@ -156,9 +157,6 @@ static std::unique_ptr<cata_shader::variant_pass> shared_variant_pass;
 // live in shared_variant_pass, so reset it before the pass
 static std::unique_ptr<smooth_lightmap> shared_lightmap;
 static void reset_shared_lightmap();
-#if defined(__ANDROID__)
-static SDL_Texture_Ptr touch_joystick;
-#endif
 static int WindowWidth;        //Width of the actual window, not the curses window
 static int WindowHeight;       //Height of the actual window, not the curses window
 // Backing-store pixel dimensions of the window, tracked apart from the logical
@@ -797,9 +795,6 @@ static void WinCreate()
         || ( window_flags & CATA_WINDOW_MAXIMIZED ) ) {
         GetWindowSize( ::window.get(), &WindowWidth, &WindowHeight );
     }
-
-    // Load virtual joystick texture
-    touch_joystick = CreateTextureFromSurface( renderer, load_image( "android/joystick.png" ) );
 #endif
 
     ClearScreen();
@@ -834,9 +829,6 @@ static void WinDestroy()
     // Unregister before SDL teardown. The remove does not join an in-flight
     // callback, but the process-lifetime coordinator outlives it.
     SDL_RemoveEventWatch( renderer_event_watch, &renderer_coordinator );
-#if defined(__ANDROID__)
-    touch_joystick.reset();
-#endif
     imclient.reset();
     shutdown_sound();
     tilecontext.reset();
@@ -1881,12 +1873,6 @@ recipe_result renderer_resource_coordinator::recipe_device_reset()
     if( check_pause_abort() ) {
         return { recipe_outcome::failure };
     }
-#if defined(__ANDROID__)
-    touch_joystick.reset();
-    if( check_pause_abort() ) {
-        return { recipe_outcome::failure };
-    }
-#endif
     loading_ui::release_gpu_resources();
     display_buffer.reset();
     if( check_pause_abort() ) {
@@ -1931,12 +1917,6 @@ recipe_result renderer_resource_coordinator::recipe_device_reset()
     if( check_pause_abort() ) {
         return { recipe_outcome::failure };
     }
-#if defined(__ANDROID__)
-    touch_joystick = CreateTextureFromSurface( renderer, load_image( "android/joystick.png" ) );
-    if( check_pause_abort() ) {
-        return { recipe_outcome::failure };
-    }
-#endif
     const atlas_upload_interrupt replay = replay_live_atlases();
     if( replay != atlas_upload_interrupt::none ) {
         return map_replay_interrupt( replay );
@@ -2071,12 +2051,6 @@ recipe_result renderer_resource_coordinator::recipe_device_lost()
     if( check_pause_abort() ) {
         return { recipe_outcome::failure };
     }
-#if defined(__ANDROID__)
-    touch_joystick.reset();
-    if( check_pause_abort() ) {
-        return { recipe_outcome::failure };
-    }
-#endif
     loading_ui::release_gpu_resources();
     display_buffer.reset();
     if( check_pause_abort() ) {
@@ -2104,12 +2078,6 @@ recipe_result renderer_resource_coordinator::recipe_device_lost()
     if( check_pause_abort() ) {
         return { recipe_outcome::failure };
     }
-#if defined(__ANDROID__)
-    touch_joystick = CreateTextureFromSurface( renderer, load_image( "android/joystick.png" ) );
-    if( check_pause_abort() ) {
-        return { recipe_outcome::failure };
-    }
-#endif
     const atlas_upload_interrupt replay = replay_live_atlases();
     if( replay != atlas_upload_interrupt::none ) {
         return map_replay_interrupt( replay );
@@ -5387,6 +5355,86 @@ void draw_quick_shortcuts()
     }
 }
 
+// joystick deadzone radius in window pixels
+static float android_touch_deadzone()
+{
+    return get_option<float>( "ANDROID_DEADZONE_RANGE" ) * get_option<float>( "ANDROID_JOYSTICK_SCALE" )
+           *
+           std::max( WindowWidth, WindowHeight );
+}
+
+// width of the band past the deadzone where the repeat rate ramps up, in window pixels
+static float android_touch_repeat_range()
+{
+    return std::max( 0.01f, get_option<float>( "ANDROID_REPEAT_DELAY_RANGE" ) ) *
+           get_option<float>( "ANDROID_JOYSTICK_SCALE" ) * std::max( WindowWidth, WindowHeight );
+}
+
+// straight joystick slice width; contexts binding no diagonal moves, like most
+// menus, get four 90 degree slices
+static float android_touch_straight_width()
+{
+    if( !touch_input_context.is_action_registered( "LEFTUP" ) ) {
+        return 90.0f;
+    }
+    return get_option<float>( "ANDROID_JOYSTICK_STRAIGHT_ANGLE" );
+}
+
+// how far current touch is into the repeat band, 0 to 1
+static float android_touch_speed()
+{
+    const float delta_x = finger_curr_x - finger_down_x;
+    const float delta_y = finger_curr_y - finger_down_y;
+    return touch_joystick::speed_fraction( std::sqrt( delta_x * delta_x + delta_y * delta_y ),
+                                           android_touch_deadzone(), android_touch_repeat_range() );
+}
+
+// fill part of joystick octagon between two apothems over a slice of angles
+static void draw_joystick_band( const SDL_FPoint &center, const float inner, const float outer,
+                                const float start, const float end, const SDL_FColor &color )
+{
+    std::vector<SDL_Vertex> vertices;
+    std::vector<int> indices;
+    for( const float degrees : touch_joystick::band_angles( start, end ) ) {
+        const float radians = degrees * static_cast<float>( M_PI ) / 180.0f;
+        const float cos_a = std::cos( radians );
+        const float sin_a = std::sin( radians );
+        const float r_in = touch_joystick::octagon_radius( degrees, inner );
+        const float r_out = touch_joystick::octagon_radius( degrees, outer );
+        const int first = static_cast<int>( vertices.size() );
+        vertices.push_back( { { center.x + r_in * cos_a, center.y + r_in * sin_a }, color, { 0.0f, 0.0f } } );
+        vertices.push_back( { { center.x + r_out * cos_a, center.y + r_out * sin_a }, color, { 0.0f, 0.0f } } );
+        if( first > 0 ) {
+            indices.insert( indices.end(), { first - 2, first - 1, first + 1, first - 2, first + 1, first } );
+        }
+    }
+    RenderGeometry( renderer, nullptr, vertices.data(), static_cast<int>( vertices.size() ),
+                    indices.data(), static_cast<int>( indices.size() ) );
+}
+
+// thin line along one edge of a slice, from the deadzone to the rim
+static void draw_joystick_spoke( const SDL_FPoint &center, const float inner, const float outer,
+                                 const float degrees, const float half_width, const SDL_FColor &color )
+{
+    const float radians = degrees * static_cast<float>( M_PI ) / 180.0f;
+    const float cos_a = std::cos( radians );
+    const float sin_a = std::sin( radians );
+    const float r_in = touch_joystick::octagon_radius( degrees, inner );
+    const float r_out = touch_joystick::octagon_radius( degrees, outer );
+    const float nx = -sin_a * half_width;
+    const float ny = cos_a * half_width;
+    const std::array<SDL_Vertex, 4> v = { {
+            { { center.x + r_in *cos_a - nx, center.y + r_in *sin_a - ny }, color, { 0.0f, 0.0f } },
+            { { center.x + r_out *cos_a - nx, center.y + r_out *sin_a - ny }, color, { 0.0f, 0.0f } },
+            { { center.x + r_out *cos_a + nx, center.y + r_out *sin_a + ny }, color, { 0.0f, 0.0f } },
+            { { center.x + r_in *cos_a + nx, center.y + r_in *sin_a + ny }, color, { 0.0f, 0.0f } },
+        }
+    };
+    static constexpr std::array<int, 6> idx = { 0, 1, 2, 0, 2, 3 };
+    RenderGeometry( renderer, nullptr, v.data(), static_cast<int>( v.size() ), idx.data(),
+                    static_cast<int>( idx.size() ) );
+}
+
 void draw_virtual_joystick()
 {
 
@@ -5401,32 +5449,60 @@ void draw_virtual_joystick()
         return;
     }
 
-    SetTextureAlphaMod( touch_joystick,
-                        get_option<int>( "ANDROID_VIRTUAL_JOYSTICK_OPACITY" ) * 0.01f * 255.0f );
+    const float opacity = get_option<int>( "ANDROID_VIRTUAL_JOYSTICK_OPACITY" ) * 0.01f;
+    const SDL_FColor frame{ 1.0f, 1.0f, 1.0f, std::min( 1.0f, opacity * 2.0f ) };
+    const SDL_FColor backdrop{ 0.0f, 0.0f, 0.0f, opacity };
+    const SDL_FColor highlight{ 1.0f, 1.0f, 1.0f, opacity * 0.75f };
+    const SDL_FColor speed{ 1.0f, 0.85f, 0.4f, std::min( 1.0f, opacity * 2.5f ) };
 
-    float longest_window_edge = std::max( WindowWidth, WindowHeight );
+    const SDL_FPoint center{ finger_down_x, finger_down_y };
+    const float deadzone = android_touch_deadzone();
+    const float rim = deadzone + android_touch_repeat_range();
+    const float line = std::max( 1.0f, rim * 0.015f );
+    const float straight_width = android_touch_straight_width();
 
-    SDL_Rect dstrect;
+    SetRenderDrawBlendMode( renderer, SDL_BLENDMODE_BLEND );
+    draw_joystick_band( center, deadzone, rim, 0.0f, 360.0f, backdrop );
 
-    // Draw deadzone range
-    dstrect.w = dstrect.h = ( get_option<float>( "ANDROID_DEADZONE_RANGE" ) ) * longest_window_edge * 2;
-    dstrect.x = finger_down_x - dstrect.w / 2;
-    dstrect.y = finger_down_y - dstrect.h / 2;
-    RenderCopy( renderer, touch_joystick, NULL, &dstrect );
+    const float delta_x = finger_curr_x - finger_down_x;
+    const float delta_y = finger_curr_y - finger_down_y;
+    const touch_joystick::direction dir = touch_joystick::classify( delta_x, delta_y, deadzone,
+                                          straight_width );
+    if( dir != touch_joystick::direction::none ) {
+        const std::pair<float, float> slice = touch_joystick::wedge( dir, straight_width );
+        draw_joystick_band( center, deadzone, rim, slice.first, slice.second, highlight );
+        const float reach = deadzone + ( rim - deadzone ) * android_touch_speed();
+        draw_joystick_band( center, deadzone, reach, slice.first, slice.second, speed );
+    }
 
-    // Draw repeat delay range
-    dstrect.w = dstrect.h = ( get_option<float>( "ANDROID_DEADZONE_RANGE" ) +
-                              get_option<float>( "ANDROID_REPEAT_DELAY_RANGE" ) ) * longest_window_edge * 2;
-    dstrect.x = finger_down_x - dstrect.w / 2;
-    dstrect.y = finger_down_y - dstrect.h / 2;
-    RenderCopy( renderer, touch_joystick, NULL, &dstrect );
+    // slice edges, deadzone and rim; every edge starts one slice
+    using touch_joystick::direction;
+    std::vector<direction> slices = { direction::right, direction::down, direction::left, direction::up };
+    if( straight_width < 90.0f ) {
+        slices.insert( slices.end(), { direction::down_right, direction::down_left, direction::up_left,
+                                       direction::up_right
+                                     } );
+    }
+    for( const direction slice_dir : slices ) {
+        draw_joystick_spoke( center, deadzone, rim, touch_joystick::wedge( slice_dir,
+                             straight_width ).first,
+                             line * 0.5f, frame );
+    }
+    draw_joystick_band( center, deadzone - line, deadzone, 0.0f, 360.0f, frame );
+    draw_joystick_band( center, rim - line, rim, 0.0f, 360.0f, frame );
 
-    // Draw current touch position (50% size of repeat delay range)
-    dstrect.w = dstrect.h = dstrect.w / 2;
-    dstrect.x = finger_down_x + ( finger_curr_x - finger_down_x ) / 2 - dstrect.w / 2;
-    dstrect.y = finger_down_y + ( finger_curr_y - finger_down_y ) / 2 - dstrect.h / 2;
-    RenderCopy( renderer, touch_joystick, NULL, &dstrect );
-
+    // knob under the finger, kept inside the rim
+    const float knob = rim * 0.2f;
+    float knob_x = delta_x;
+    float knob_y = delta_y;
+    const float knob_dist = std::sqrt( knob_x * knob_x + knob_y * knob_y );
+    if( knob_dist > rim ) {
+        knob_x *= rim / knob_dist;
+        knob_y *= rim / knob_dist;
+    }
+    draw_joystick_band( SDL_FPoint{ center.x + knob_x, center.y + knob_y }, 0.0f, knob, 0.0f, 360.0f,
+                        frame );
+    SetRenderDrawBlendMode( renderer, SDL_BLENDMODE_NONE );
 }
 #endif
 
@@ -5527,14 +5603,7 @@ static void draw_gamepad_radial_menu()
 #if defined(__ANDROID__)
 void update_finger_repeat_delay()
 {
-    float delta_x = finger_curr_x - finger_down_x;
-    float delta_y = finger_curr_y - finger_down_y;
-    float dist = std::sqrt( delta_x * delta_x + delta_y * delta_y );
-    float longest_window_edge = std::max( WindowWidth, WindowHeight );
-    float t = clamp<float>( ( dist - ( get_option<float>( "ANDROID_DEADZONE_RANGE" ) *
-                                       longest_window_edge ) ) /
-                            std::max( 0.01f, ( get_option<float>( "ANDROID_REPEAT_DELAY_RANGE" ) ) * longest_window_edge ),
-                            0.0f, 1.0f );
+    const float t = android_touch_speed();
     float repeat_delay_min = static_cast<float>( get_option<int>( "ANDROID_REPEAT_DELAY_MIN" ) );
     float repeat_delay_max = static_cast<float>( get_option<int>( "ANDROID_REPEAT_DELAY_MAX" ) );
     finger_repeat_delay = lerp<float>( std::max( repeat_delay_min, repeat_delay_max ),
@@ -5570,73 +5639,44 @@ int get_key_event_from_string( const std::string &str )
     }
     return -1;
 }
+// input a joystick direction sends; diagonals go through the gamepad stick
+static input_event touch_direction_input( const touch_joystick::direction dir )
+{
+    using touch_joystick::direction;
+    switch( dir ) {
+        case direction::right:
+            return input_event( KEY_RIGHT, input_event_t::keyboard_char );
+        case direction::down:
+            return input_event( KEY_DOWN, input_event_t::keyboard_char );
+        case direction::left:
+            return input_event( KEY_LEFT, input_event_t::keyboard_char );
+        case direction::up:
+            return input_event( KEY_UP, input_event_t::keyboard_char );
+        case direction::down_right:
+            return input_event( JOY_LS_DOWN_RIGHT, input_event_t::gamepad );
+        case direction::down_left:
+            return input_event( JOY_LS_DOWN_LEFT, input_event_t::gamepad );
+        case direction::up_left:
+            return input_event( JOY_LS_UP_LEFT, input_event_t::gamepad );
+        case direction::up_right:
+            return input_event( JOY_LS_UP_RIGHT, input_event_t::gamepad );
+        case direction::none:
+            break;
+    }
+    return input_event();
+}
+
 // This function is triggered on finger up events, OR by a repeating timer for touch hold events.
 void handle_finger_input( uint32_t ticks )
 {
 
-    float delta_x = finger_curr_x - finger_down_x;
-    float delta_y = finger_curr_y - finger_down_y;
-    float dist = std::sqrt( delta_x * delta_x + delta_y * delta_y ); // in pixel space
-    bool handle_diagonals = touch_input_context.is_action_registered( "LEFTUP" );
-    bool is_default_mode = touch_input_context.get_category() == "DEFAULTMODE";
-    if( dist > ( get_option<float>( "ANDROID_DEADZONE_RANGE" )*std::max( WindowWidth,
-                 WindowHeight ) ) ) {
-        if( !handle_diagonals ) {
-            if( delta_x >= 0 && delta_y >= 0 ) {
-                last_input = input_event( delta_x > delta_y ? KEY_RIGHT : KEY_DOWN, input_event_t::keyboard_char );
-            } else if( delta_x < 0 && delta_y >= 0 ) {
-                last_input = input_event( -delta_x > delta_y ? KEY_LEFT : KEY_DOWN, input_event_t::keyboard_char );
-            } else if( delta_x >= 0 && delta_y < 0 ) {
-                last_input = input_event( delta_x > -delta_y ? KEY_RIGHT : KEY_UP, input_event_t::keyboard_char );
-            } else if( delta_x < 0 && delta_y < 0 ) {
-                last_input = input_event( -delta_x > -delta_y ? KEY_LEFT : KEY_UP, input_event_t::keyboard_char );
-            }
-        } else {
-            if( delta_x > 0 ) {
-                if( std::abs( delta_y ) < delta_x * 0.5f ) {
-                    // swipe right
-                    last_input = input_event( KEY_RIGHT, input_event_t::keyboard_char );
-                } else if( std::abs( delta_y ) < delta_x * 2.0f ) {
-                    if( delta_y < 0 ) {
-                        // swipe up-right
-                        last_input = input_event( JOY_LS_UP_RIGHT, input_event_t::gamepad );
-                    } else {
-                        // swipe down-right
-                        last_input = input_event( JOY_LS_DOWN_RIGHT, input_event_t::gamepad );
-                    }
-                } else {
-                    if( delta_y < 0 ) {
-                        // swipe up
-                        last_input = input_event( KEY_UP, input_event_t::keyboard_char );
-                    } else {
-                        // swipe down
-                        last_input = input_event( KEY_DOWN, input_event_t::keyboard_char );
-                    }
-                }
-            } else {
-                if( std::abs( delta_y ) < -delta_x * 0.5f ) {
-                    // swipe left
-                    last_input = input_event( KEY_LEFT, input_event_t::keyboard_char );
-                } else if( std::abs( delta_y ) < -delta_x * 2.0f ) {
-                    if( delta_y < 0 ) {
-                        // swipe up-left
-                        last_input = input_event( JOY_LS_UP_LEFT, input_event_t::gamepad );
-
-                    } else {
-                        // swipe down-left
-                        last_input = input_event( JOY_LS_DOWN_LEFT, input_event_t::gamepad );
-                    }
-                } else {
-                    if( delta_y < 0 ) {
-                        // swipe up
-                        last_input = input_event( KEY_UP, input_event_t::keyboard_char );
-                    } else {
-                        // swipe down
-                        last_input = input_event( KEY_DOWN, input_event_t::keyboard_char );
-                    }
-                }
-            }
-        }
+    const float delta_x = finger_curr_x - finger_down_x;
+    const float delta_y = finger_curr_y - finger_down_y;
+    const bool is_default_mode = touch_input_context.get_category() == "DEFAULTMODE";
+    const touch_joystick::direction dir = touch_joystick::classify( delta_x, delta_y,
+                                          android_touch_deadzone(), android_touch_straight_width() );
+    if( dir != touch_joystick::direction::none ) {
+        last_input = touch_direction_input( dir );
     } else {
         if( ticks - finger_down_time >= static_cast<uint32_t>
             ( get_option<int>( "ANDROID_INITIAL_DELAY" ) ) ) {
@@ -5787,7 +5827,11 @@ static void CheckMessages()
 
     // Copy the current input context
     input_context *new_input_context = input_context::input_context_stack.back();
-    if( new_input_context && *new_input_context != touch_input_context ) {
+    // a context pushed before its actions are registered, as at the start of a game
+    // turn, isn't an input mode yet; switching to it would flash a four-way joystick
+    if( new_input_context &&
+        !touch_joystick::is_bare_context( new_input_context->get_registered_actions() ) &&
+        *new_input_context != touch_input_context ) {
 
         // If we were in an allow_text_entry input context, and text input is still active, and we're auto-managing keyboard, hide it.
         if( touch_input_context.allow_text_entry &&
@@ -6422,8 +6466,7 @@ static void CheckMessages()
                             float delta_x = finger_curr_x - finger_down_x;
                             float delta_y = finger_curr_y - finger_down_y;
                             float dist = std::sqrt( delta_x * delta_x + delta_y * delta_y );
-                            float max_dist = ( get_option<float>( "ANDROID_DEADZONE_RANGE" ) +
-                                               get_option<float>( "ANDROID_REPEAT_DELAY_RANGE" ) ) * std::max( WindowWidth, WindowHeight );
+                            float max_dist = android_touch_deadzone() + android_touch_repeat_range();
                             if( dist > max_dist ) {
                                 float delta_ratio = ( dist / max_dist ) - 1.0f;
                                 finger_down_x += delta_x * delta_ratio;
