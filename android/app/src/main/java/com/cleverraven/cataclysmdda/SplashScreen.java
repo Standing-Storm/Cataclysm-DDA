@@ -47,6 +47,7 @@ public class SplashScreen extends Activity {
 
     public boolean[] mSettingsValues = { false, true, true };
     private int mSystemUiModeIndex = 0;
+    private String mScreenOrientation = CataclysmDDA.SCREEN_ORIENTATION_LANDSCAPE;
 
     private String getVersionName() {
         try {
@@ -154,6 +155,7 @@ public class SplashScreen extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         Log.e(TAG, "onCreate()");
         super.onCreate(savedInstanceState);
+        CataclysmDDA.applyStoredScreenOrientation(this);
 
         accessibilityServicesAlert = new AlertDialog.Builder(SplashScreen.this)
             .setTitle(getString(R.string.accessibilityServicesTitle))
@@ -279,6 +281,7 @@ public class SplashScreen extends Activity {
                     public void onClick(DialogInterface dialog, int id) {
                         PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putBoolean("Software rendering", SplashScreen.this.mSettingsValues[0]).commit();
                         PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(CataclysmDDA.PREF_SYSTEM_UI_MODE, getSelectedSystemUiMode()).commit();
+                        PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(CataclysmDDA.PREF_SCREEN_ORIENTATION, SplashScreen.this.mScreenOrientation).commit();
                         PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putBoolean("Trap Back button", SplashScreen.this.mSettingsValues[1]).commit();
                         PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putBoolean("Native Android UI", SplashScreen.this.mSettingsValues[2]).commit();
                         SplashScreen.this.startGameActivity(false);
@@ -310,6 +313,8 @@ public class SplashScreen extends Activity {
                     : CataclysmDDA.SYSTEM_UI_MODE_SYSTEM_BARS;
             }
             SplashScreen.this.mSystemUiModeIndex = systemUiModeIndex(mode);
+            SplashScreen.this.mScreenOrientation = preferences.getString(
+                CataclysmDDA.PREF_SCREEN_ORIENTATION, CataclysmDDA.SCREEN_ORIENTATION_LANDSCAPE);
         }
 
         private ScrollView createSettingsView() {
@@ -337,6 +342,43 @@ public class SplashScreen extends Activity {
             });
             layout.addView(displayModeGroup);
 
+            TextView orientationLabel = new TextView(SplashScreen.this);
+            orientationLabel.setText(getString(R.string.androidScreenOrientation));
+            layout.addView(orientationLabel);
+
+            final String[] orientations = {
+                CataclysmDDA.SCREEN_ORIENTATION_LANDSCAPE,
+                CataclysmDDA.SCREEN_ORIENTATION_PORTRAIT,
+                CataclysmDDA.SCREEN_ORIENTATION_AUTO
+            };
+            final String[] orientationLabels = {
+                getString(R.string.androidScreenOrientationLandscape),
+                getString(R.string.androidScreenOrientationPortrait),
+                getString(R.string.androidScreenOrientationAuto)
+            };
+            RadioGroup orientationGroup = new RadioGroup(SplashScreen.this);
+            orientationGroup.setOrientation(RadioGroup.VERTICAL);
+            for (int i = 0; i < orientations.length; i++) {
+                RadioButton button = new RadioButton(SplashScreen.this);
+                button.setId(ORIENTATION_BUTTON_ID_BASE + i);
+                button.setText(orientationLabels[i]);
+                orientationGroup.addView(button, new RadioGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+                if (orientations[i].equals(mScreenOrientation)) {
+                    orientationGroup.check(ORIENTATION_BUTTON_ID_BASE + i);
+                }
+            }
+            orientationGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(RadioGroup group, int checkedId) {
+                    SplashScreen.this.mScreenOrientation = orientations[checkedId - ORIENTATION_BUTTON_ID_BASE];
+                    SplashScreen.this.setRequestedOrientation(
+                        CataclysmDDA.requestedOrientationFor(SplashScreen.this.mScreenOrientation));
+                }
+            });
+            layout.addView(orientationGroup);
+
             addBooleanSetting(layout, 0, getString(R.string.softwareRendering));
             addBooleanSetting(layout, 1, getString(R.string.trapBackButton));
             addBooleanSetting(layout, 2, getString(R.string.nativeAndroidUI));
@@ -354,6 +396,8 @@ public class SplashScreen extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         }
+
+        private static final int ORIENTATION_BUTTON_ID_BASE = 2000;
 
         private int systemUiModeButtonId(int index) {
             return 1000 + index;

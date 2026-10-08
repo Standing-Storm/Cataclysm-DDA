@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "cata_tiles.h"
+#include "point.h"
 
 class Font;
 struct font_config;
@@ -563,6 +564,17 @@ struct renderer_recovery_test_support {
                                           int &paints );
     // installed test font, or null
     static Font *test_font();
+    // build terminal and gui fonts at `cell`, like a text size change. false keeps
+    // current fonts and cell. acquires SDL_ttf like install_test_font (fixture teardown
+    // releases it). teardown restores font, gui_font, the cell and
+    // terminal_glyphs_changed, so test order can't leak state
+    static bool rebuild_terminal_fonts( const point &cell, int point_size,
+                                        const std::vector<font_config> &typefaces,
+                                        const std::vector<font_config> &gui_typefaces );
+    // current terminal cell and live font roots
+    static point terminal_cell();
+    static const Font *terminal_font();
+    static const Font *terminal_gui_font();
     // run `body` on an ImGui client built on the fixture renderer with the gui
     // and mono fonts, then tear the client down
     static void with_imgui_client( const std::vector<font_config> &gui_typefaces,

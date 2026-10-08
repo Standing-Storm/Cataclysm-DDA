@@ -12,6 +12,7 @@
 #include "cata_imgui.h"
 #include "cata_scope_helpers.h"
 #include "cata_tiles.h"
+#include "cursesport.h"
 #include "font_loader.h"
 #include "imgui/imgui.h"
 #include "options_helpers.h"
@@ -19,6 +20,8 @@
 #include "point.h"
 #include "sdl_renderer_recovery.h"
 #include "sdltiles.h"
+
+class Font;
 
 namespace
 {
@@ -1189,6 +1192,66 @@ TEST_CASE( "imgui_font_reload_reaches_the_renderer", "[tiles][renderer_recovery]
         CHECK( tex->Status == ImTextureStatus_OK );
         CHECK( tex->GetTexID() != ImTextureID_Invalid );
     } );
+}
+
+TEST_CASE( "terminal_font_rebuild_changes_cell_or_keeps_state", "[tiles][renderer_recovery]" )
+{
+    software_render_fixture fx;
+    if( !fx.available() ) {
+        WARN( "dummy SDL video backend unavailable; skipping" );
+        return;
+    }
+    const std::vector<font_config> faces = { font_config( "data/font/Terminus.ttf" ) };
+    // FontFallbackList throws on empty list; missing path may resolve to a fallback
+    const std::vector<font_config> no_faces;
+    REQUIRE( renderer_recovery_test_support::rebuild_terminal_fonts( point( 8, 16 ), 16, faces,
+             faces ) );
+    const point before = renderer_recovery_test_support::terminal_cell();
+    const Font *font_before = renderer_recovery_test_support::terminal_font();
+    const Font *gui_before = renderer_recovery_test_support::terminal_gui_font();
+    GIVEN( "faces that load" ) {
+        THEN( "the cell becomes the new size" ) {
+            REQUIRE( renderer_recovery_test_support::rebuild_terminal_fonts( point( 12, 24 ), 24, faces,
+                     faces ) );
+            CHECK( renderer_recovery_test_support::terminal_cell() == point( 12, 24 ) );
+        }
+    }
+    GIVEN( "no terminal face that loads" ) {
+        THEN( "both font roots and the cell stay as they were" ) {
+            CHECK_FALSE( renderer_recovery_test_support::rebuild_terminal_fonts( point( 12, 24 ), 24,
+                         no_faces, faces ) );
+            CHECK( renderer_recovery_test_support::terminal_cell() == before );
+            CHECK( renderer_recovery_test_support::terminal_font() == font_before );
+            CHECK( renderer_recovery_test_support::terminal_gui_font() == gui_before );
+        }
+    }
+    GIVEN( "terminal font builds, gui font fails" ) {
+        THEN( "neither live font changes" ) {
+            CHECK_FALSE( renderer_recovery_test_support::rebuild_terminal_fonts( point( 12, 24 ), 24,
+                         faces, no_faces ) );
+            CHECK( renderer_recovery_test_support::terminal_cell() == before );
+            CHECK( renderer_recovery_test_support::terminal_font() == font_before );
+            CHECK( renderer_recovery_test_support::terminal_gui_font() == gui_before );
+        }
+    }
+}
+
+TEST_CASE( "renderer_coordinator_font_change_redraws_in_full", "[tiles][renderer_recovery]" )
+{
+    software_render_fixture fx;
+    if( !fx.available() ) {
+        WARN( "dummy SDL video backend unavailable; skipping" );
+        return;
+    }
+    // same cell size, so the display buffer keeps its dims: only the glyphs change
+    const point cell = renderer_recovery_test_support::terminal_cell();
+    const std::vector<font_config> faces = { font_config( "data/font/Terminus.ttf" ) };
+    REQUIRE( renderer_recovery_test_support::rebuild_terminal_fonts( cell, cell.y, faces, faces ) );
+    const unsigned epoch_before = cata_cursesport::curses_render_epoch;
+    renderer_coordinator.notify_resize();
+    renderer_coordinator.drain_pending();
+    REQUIRE( renderer_coordinator.is_render_allowed() );
+    CHECK( cata_cursesport::curses_render_epoch == epoch_before + 1 );
 }
 
 #endif // TILES
