@@ -921,6 +921,8 @@ void Character::initialize( bool learn_recipes )
 
     set_skills_from_hobbies();
 
+    set_trauma( prof->starting_trauma );
+
     // setup staring bank money
     cash = prof->starting_cash().value_or( rng( -200000, 200000 ) );
 

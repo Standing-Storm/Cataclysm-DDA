@@ -776,6 +776,13 @@ bool game::do_turn()
         u.check_and_recover_morale();
     }
 
+    if( calendar::once_every( 1_days ) ) {
+        u.mod_trauma( -1 );
+        for( npc &guy : all_npcs() ) {
+            guy.mod_trauma( -1 );
+        }
+    }
+
     if( !u.is_deaf() ) {
         sfx::remove_hearing_loss();
     }
