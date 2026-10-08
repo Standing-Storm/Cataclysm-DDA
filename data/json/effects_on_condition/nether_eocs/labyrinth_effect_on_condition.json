@@ -28,7 +28,8 @@
           {
             "if": { "not": { "compare_string": [ "yes", { "u_val": "traveled_to_labyrinth_safehouse" } ] } },
             "then": { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } }
-          }
+          },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ],
         "else": [
           { "u_message": "Zwoink.", "popup": true },
@@ -49,7 +50,8 @@
             "x_adjust": 1
           },
           { "u_teleport": { "global_val": "original_labyrinth_portal_loc" }, "fail_message": "Nope!", "force": true },
-          { "run_eocs": [ "EOC_LS_ROLL_FOR_STRING_DIMENSION_ENCOUNTER" ] }
+          { "run_eocs": [ "EOC_LS_ROLL_FOR_STRING_DIMENSION_ENCOUNTER" ] },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ]
       }
     ],
@@ -85,7 +87,8 @@
           {
             "if": { "not": { "compare_string": [ "yes", { "u_val": "traveled_to_labyrinth_safehouse" } ] } },
             "then": { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } }
-          }
+          },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ],
         "else": [
           { "u_message": "Zwoink.", "popup": true },
@@ -107,7 +110,8 @@
           },
           { "u_teleport": { "global_val": "original_labyrinth_portal_loc" }, "fail_message": "Nope!", "force": true },
           { "alter_timed_events": "string_dimension_lights_on" },
-          { "run_eocs": [ "EOC_LS_ROLL_FOR_STRING_DIMENSION_ENCOUNTER" ] }
+          { "run_eocs": [ "EOC_LS_ROLL_FOR_STRING_DIMENSION_ENCOUNTER" ] },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ]
       }
     ],
@@ -148,7 +152,8 @@
                 "else": { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } }
               }
             ]
-          }
+          },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ],
         "else": [
           {
@@ -180,6 +185,10 @@
               { "finish_mission": "MISSION_FIND_LABYRINTH_SPIRE", "success": true },
               {
                 "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting_scenario_trapped_in_labyrinth" }
+              },
+              {
+                "if": { "not": { "u_has_trait": "anti_shape" } },
+                "then": { "u_add_effect": "nausea", "duration": 60 }
               }
             ],
             "else": [
@@ -204,7 +213,11 @@
                 }
               },
               { "u_teleport": { "u_val": "safehouse_floor_portal_enclosure" } },
-              { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } }
+              { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } },
+              {
+                "if": { "not": { "u_has_trait": "anti_shape" } },
+                "then": { "u_add_effect": "nausea", "duration": 60 }
+              }
             ]
           }
         ]
@@ -253,6 +266,7 @@
         }
       },
       { "u_teleport": { "u_val": "safehouse_floor_portal_enclosure" } },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } },
       {
         "if": { "not": { "compare_string": [ "yes", { "u_val": "traveled_to_labyrinth_safehouse" } ] } },
         "then": { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } }
@@ -337,7 +351,8 @@
         "success_message": "Your surroundings warp and fold into the recesses of the world you know."
       },
       { "u_teleport": { "u_val": "player_location_home_before_labyrinth" }, "force": true },
-      { "clear_dimension": "netherum_labyrinth" }
+      { "clear_dimension": "netherum_labyrinth" },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
     ],
     "false_effect": [ { "u_message": "You feel a prickle at the edge of your senses." } ]
   },
@@ -356,7 +371,8 @@
       },
       { "u_teleport": { "u_val": "player_location_string_dimension_before_labyrinth" }, "force": true },
       { "custom_light_level": 125, "length": "9999 days", "key": "string_dimension_lights_on" },
-      { "clear_dimension": "netherum_labyrinth" }
+      { "clear_dimension": "netherum_labyrinth" },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
     ],
     "false_effect": [ { "u_message": "You feel a prickle at the edge of your senses." } ]
   },
@@ -374,7 +390,8 @@
         "success_message": "Your surroundings warp and fold into the recesses of another world."
       },
       { "u_teleport": { "u_val": "player_location_scarlet_before_labyrinth" }, "force": true },
-      { "clear_dimension": "netherum_labyrinth" }
+      { "clear_dimension": "netherum_labyrinth" },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
     ],
     "false_effect": [ { "u_message": "You feel a prickle at the edge of your senses." } ]
   },
@@ -396,7 +413,8 @@
           },
           { "u_teleport": { "u_val": "player_location_safehouse_before_labyrinth" }, "force": true },
           { "clear_dimension": "netherum_labyrinth" },
-          { "clear_dimension": "netherum_labyrinth2" }
+          { "clear_dimension": "netherum_labyrinth2" },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ],
         "else": [
           { "u_travel_to_dimension": "netherum_labyrinth_safehouse", "npc_travel_radius": 0, "npc_travel_filter": "none" },
@@ -414,7 +432,8 @@
             "u_message": "The world around you folds in on itself - zwoink.  Then, you hear three soft chimes, and find yourself standing in a metal ring.  A tall, bulbous computer screen looms before you, slightly too tall to comfortably look at without craning your neck.  Text starts to populate the screen.",
             "popup": true
           },
-          { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } }
+          { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ]
       }
     ],
@@ -435,7 +454,8 @@
         "fail_message": "You feel a prickle at the edge of your senses.",
         "success_message": "Your surroundings warp and fold into a familiar place."
       },
-      { "u_teleport": { "u_val": "player_location_safehouse_before_labyrinth" }, "force": true }
+      { "u_teleport": { "u_val": "player_location_safehouse_before_labyrinth" }, "force": true },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
     ],
     "false_effect": [ { "u_message": "You feel a prickle at the edge of your senses." } ]
   },
@@ -459,7 +479,8 @@
           },
           { "u_teleport": { "u_val": "player_location_safehouse_before_labyrinth" }, "force": true },
           { "clear_dimension": "netherum_labyrinth" },
-          { "clear_dimension": "netherum_labyrinth2" }
+          { "clear_dimension": "netherum_labyrinth2" },
+          { "run_eocs": "EOC_DIMENSION_TELE_SICKNESS" }
         ],
         "else": [
           {
@@ -474,7 +495,8 @@
             "success_message": "Your surroundings warp and fold into the recesses of the world you know."
           },
           { "clear_dimension": "netherum_labyrinth" },
-          { "clear_dimension": "netherum_labyrinth2" }
+          { "clear_dimension": "netherum_labyrinth2" },
+          { "run_eocs": "EOC_DIMENSION_TELE_SICKNESS" }
         ]
       }
     ]
@@ -868,7 +890,8 @@
       },
       { "u_teleport": { "context_val": "string_dimension_floor_portal_enclosure" } },
       { "custom_light_level": 125, "length": "9999 days", "key": "string_dimension_lights_on" },
-      { "clear_dimension": "netherum_labyrinth" }
+      { "clear_dimension": "netherum_labyrinth" },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
     ],
     "false_effect": [ { "u_message": "You feel a prickle at the edge of your senses." } ]
   },
@@ -893,7 +916,8 @@
         "furniture": "f_exodii_lamp_string_warped",
         "target_max_radius": 24
       },
-      { "u_teleport": { "context_val": "string_dimension_tunnel" } }
+      { "u_teleport": { "context_val": "string_dimension_tunnel" } },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
     ]
   },
   {
@@ -1660,7 +1684,8 @@
           },
           { "u_teleport": { "u_val": "player_location_safehouse_before_labyrinth" }, "force": true },
           { "clear_dimension": "netherum_labyrinth" },
-          { "clear_dimension": "netherum_labyrinth2" }
+          { "clear_dimension": "netherum_labyrinth2" },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ],
         "else": [
           { "u_travel_to_dimension": "netherum_labyrinth_safehouse", "npc_travel_radius": 0, "npc_travel_filter": "none" },
@@ -1678,7 +1703,8 @@
             "u_message": "The maze around you folds in on itself - zwoink.  Then, you hear three soft chimes, and find yourself standing in a metal ring.  A tall, bulbous computer screen looms before you, slightly too tall to comfortably look at without craning your neck.  Text starts to populate the screen.",
             "popup": true
           },
-          { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } }
+          { "open_dialogue": { "topic": "COMP_labyrinthine_safehouse_computer_meeting" } },
+          { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
         ]
       }
     ],

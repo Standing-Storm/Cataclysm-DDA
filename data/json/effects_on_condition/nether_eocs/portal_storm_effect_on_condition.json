@@ -683,7 +683,8 @@
         "then": { "run_eocs": "EOC_YRAX_WARP_IN", "time_in_future": [ "3 seconds", "6 seconds" ] }
       },
       { "run_eocs": "EOC_PORTAL_HIGHLANDS_RETURN", "time_in_future": [ "3 hours", "48 hours" ] },
-      { "math": [ "u_ire -= 5" ] }
+      { "math": [ "u_ire -= 5" ] },
+      { "run_eocs": "EOC_DIMENSION_TELE_SICKNESS" }
     ]
   },
   {
@@ -698,7 +699,8 @@
         "fail_message": "Nothing seems to change.",
         "success_message": "Your surroundings warp and fold into the recesses of the world you know."
       },
-      { "give_achievement": "achievement_reach_highlands" }
+      { "give_achievement": "achievement_reach_highlands" },
+      { "run_eocs": "EOC_DIMENSION_TELE_SICKNESS" }
     ],
     "false_effect": [
       {
@@ -1017,7 +1019,8 @@
         "type": "info"
       },
       { "run_eocs": "EOC_PORTAL_STORM_DUNGEON_CRAWLING_TRACKER", "time_in_future": 60 },
-      { "run_eocs": "EOC_PORTAL_STORM_DUNGEON_DIMENSION_RETURN_REMOVE_ITEM" }
+      { "run_eocs": "EOC_PORTAL_STORM_DUNGEON_DIMENSION_RETURN_REMOVE_ITEM" },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
     ]
   },
   {
@@ -1207,7 +1210,8 @@
       },
       { "clear_dimension": "portal_storm_dungeon_dimension" },
       { "math": [ "portal_dungeon_level = 0" ] },
-      { "alter_timed_events": "portal_dungeon" }
+      { "alter_timed_events": "portal_dungeon" },
+      { "if": { "not": { "u_has_trait": "anti_shape" } }, "then": { "u_add_effect": "nausea", "duration": 60 } }
     ],
     "false_effect": { "u_message": "You feel a prickle at the edge of your senses.", "type": "bad" }
   },
