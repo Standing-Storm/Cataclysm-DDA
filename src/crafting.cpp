@@ -4494,20 +4494,28 @@ std::list<item> Character::consume_items( const std::vector<item_comp> &componen
 
 bool Character::consume_software_container( const itype_id &software_id )
 {
-    for( item_location it : all_items_loc() ) {
-        if( !it.get_item() ) {
-            continue;
+    bool consume = false;
+    item_location to_consume;
+    visit_items( [&software_id, &consume, &to_consume]( item_location it ) {
+        if( !it.valid() ) {
+            return VisitResponse::SKIP;
         }
-        if( it.get_item()->is_estorage() ) {
+        if( it->is_estorage() ) {
             for( const item *soft : it.get_item()->softwares() ) {
                 if( soft->typeId() == software_id ) {
-                    it.remove_item();
-                    return true;
+                    to_consume = it;
+                    consume = true;
+                    return VisitResponse::ABORT;
                 }
             }
+            return VisitResponse::SKIP;
         }
+        return VisitResponse::NEXT;
+    } );
+    if( consume ) {
+        remove_item( *to_consume );
     }
-    return false;
+    return consume;
 }
 
 comp_selection<tool_comp>
