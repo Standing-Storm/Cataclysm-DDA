@@ -767,10 +767,10 @@ book_proficiency_bonuses Character::book_bonuses_nearby( int radius ) const
     };
 
     // Character inventory (wielded, worn, carried -- includes e-readers)
-    for( const item_location &it :
-         const_cast<Character *>( this )->all_items_loc() ) {
+    visit_items( [&]( const item_location & it ) {
         collect( *it );
-    }
+        return VisitResponse::NEXT;
+    } );
 
     // Map items in range (shared reachability/accessibility/vehicle logic)
     get_map().for_each_reachable_item( pos_bub(), radius, this, collect );
