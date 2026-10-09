@@ -83,6 +83,7 @@
 #include "value_ptr.h"
 #include "vehicle.h"
 #include "viewer.h"
+#include "visitable.h"
 #include "vitamin.h"
 #include "vpart_position.h"
 #include "weather.h"
@@ -2153,7 +2154,7 @@ void Character::calculate_leak_level()
 {
     float ret = 0.0f;
     // This is bad way to calculate radiation and should be rewritten some day.
-    for( const item_location &item_loc : const_cast<Character *>( this )->all_items_loc() ) {
+    visit_items( [&ret]( const item_location & item_loc ) {
         const item *it = item_loc.get_item();
         if( it->has_flag( flag_RADIOACTIVE ) ) {
             if( it->has_flag( flag_LEAK_ALWAYS ) ) {
@@ -2162,7 +2163,8 @@ void Character::calculate_leak_level()
                 ret += it->damage_level();
             }
         }
-    }
+        return VisitResponse::NEXT;
+    } );
     leak_level_dirty = false;
     leak_level = ret;
 }
