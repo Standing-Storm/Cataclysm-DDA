@@ -697,5 +697,25 @@
     "flags": [ "SILENT" ],
     "effect": "vomit",
     "shape": "blast"
+  },
+  {
+    "id": "fae_unique_weapon_last_blossom_fall_spell",
+    "type": "SPELL",
+    "name": { "str": "Call Daffodil", "//~": "NO_I18N" },
+    "description": { "str": "Hidden spell that spawns the daffodil", "//~": "NO_I18N" },
+    "valid_targets": [ "self" ],
+    "min_damage": 10,
+    "max_damage": 20,
+    "max_level": 1,
+    "difficulty": 0,
+    "min_aoe": 8,
+    "max_aoe": 8,
+    "spell_class": "NONE",
+    "effect": "summon",
+    "effect_str": "mon_fetch_daffodil_warrior",
+    "shape": "blast",
+    "flags": [ "NO_LEGS", "SILENT", "RANDOM_DAMAGE", "NO_EXPLOSION_SFX", "NO_FAIL", "NO_HANDS", "NON_MAGICAL" ],
+    "min_duration": { "math": [ "spell_time(time(' 24 h'))" ] },
+    "max_duration": { "math": [ "spell_time(time(' 24 h'))" ] }
   }
 ]

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "fae_unique_weapon_last_blossom_fall",
+    "type": "ITEM",
+    "subtypes": [ "ARTIFACT" ],
+    "name": { "str": "Last Blossom's Fall" },
+    "copy-from": "ch_arming_sword",
+    "looks_like": "bokken",
+    "description": "This sword is made all of a single piece of wood and so black any details are lost.  Some kind of shimmering leather is wrapped around the grip, and the crossguard has a spray of pinkish-orange blossoms growing from it.",
+    "material": [ { "type": "wood", "portion": 1 } ],
+    "price": "1 kUSD 350 USD",
+    "price_postapoc": "50 USD",
+    "proportional": { "melee_damage": { "stab": 0.7 } },
+    "extend": { "flags": [ "WOODEN_WEAPON", "NO_RELOAD", "NO_UNLOAD", "TARDIS", "NO_REPAIR", "UNBREAKABLE_MELEE", "RELIC_PINK" ] },
+    "delete": { "flags": "CONDUCTIVE" },
+    "relative": { "melee_damage": { "biological": 12 } },
+    "techniques": [ "WBLOCK_2" ],
+    "faults": [  ],
+    "pocket_data": [ { "pocket_type": "MAGAZINE", "rigid": true, "ammo_restriction": { "glamour_charge": 4 } } ],
+    "charge_info": { "recharge_type": "forest", "time": "6 h", "regenerate_ammo": true },
+    "passive_effects": [
+      {
+        "has": "WIELD",
+        "condition": "ALWAYS",
+        "values": [
+          { "value": "FALL_DAMAGE", "multiply": -1 },
+          { "value": "ATTACK_SPEED", "add": -10 },
+          { "value": "WEAKPOINT_ACCURACY", "multiply": 0.5 }
+        ]
+      }
+    ],
+    "use_action": { "type": "cast_spell", "spell_id": "fae_unique_weapon_last_blossom_fall_spell", "no_fail": true, "level": 0 }
+  },
+  {
+    "id": "fae_unique_weapon_crimson_rain",
+    "copy-from": "mc_katana",
+    "type": "ITEM",
+    "subtypes": [ "TOOL", "ARTIFACT" ],
+    "name": { "str": "Crimson Rain" },
+    "description": "A slightly-curved, single-edged sword, unremarkable except it appears to be made entirely of flowing blood.  Despite pulsing as the blood flows, its outlines never waver.",
+    "material": [ { "type": "blood", "portion": 1 } ],
+    "extend": { "flags": [ "NO_REPAIR", "NO_RELOAD", "NO_UNLOAD", "TARDIS", "UNBREAKABLE_MELEE", "RELIC_PINK", "TRADER_AVOID" ] },
+    "techniques": [ "WBLOCK_2", "BRUTAL", "RAPID", "TEC_WEAPON_CRIMSON_RAIN_BLEEDING" ],
+    "faults": [  ],
+    "passive_effects": [ { "has": "WIELD", "condition": "ALWAYS", "values": [ { "value": "BLEEDING_RATE", "multiply": -1 } ] } ]
+  }
+]

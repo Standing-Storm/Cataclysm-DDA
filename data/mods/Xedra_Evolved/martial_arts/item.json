@@ -1,0 +1,14 @@
+[
+  {
+    "type": "technique",
+    "id": "TEC_WEAPON_CRIMSON_RAIN_BLEEDING",
+    "name": "Crimson Rend",
+    "melee_allowed": true,
+    "messages": [ "Crimson Rain flashes into %s, leaving bloody wounds!", "<npcname> slashes into %s with Crimson Rain!" ],
+    "unarmed_allowed": false,
+    "reach_ok": false,
+    "crit_ok": true,
+    "attack_vectors": [ "vector_null" ],
+    "tech_effects": [ { "id": "bleed", "chance": 100, "duration": 120, "on_damage": true, "message": "" } ]
+  }
+]
