@@ -3507,15 +3507,16 @@ std::vector<item *> Character::get_cable_solar()
 
     // There is no way to check which cable is connected to which solar pack
     // So if there are multiple cables and some of them are only partially connected this may add wrong solar pack
-    for( item_location it : all_items_loc() ) {
+    visit_items( [&n, &solar_sources]( item_location it ) {
         if( it->has_flag( flag_SOLARPACK_ON ) && it->get_var( "cable" ) == "plugged_in" ) {
             solar_sources.emplace_back( it.get_item() );
             n--;
         }
         if( n == 0 ) {
-            break;
+            return VisitResponse::ABORT;
         }
-    }
+        return VisitResponse::NEXT;
+    } );
 
     if( n > 0 && weapon.has_flag( flag_SOLARPACK_ON ) && weapon.get_var( "cable" ) == "plugged_in" ) {
         solar_sources.emplace_back( &weapon );
