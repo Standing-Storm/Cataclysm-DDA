@@ -2,6 +2,7 @@
 
 #if defined( TILES )
 
+#include "cata_utility.h"
 #include "json_loader.h"
 
 // Ensure that unifont is always loaded as a fallback font to prevent users from shooting themselves in the foot
@@ -21,6 +22,11 @@ void ensure_unifont_loaded( std::vector<std::string> &font_list )
     if( std::find( font_list.begin(), font_list.end(), unifont ) == font_list.end() ) {
         font_list.emplace_back( unifont );
     }
+}
+
+bool is_bitmap_typeface( std::string_view path )
+{
+    return string_ends_with( path, ".bmp" ) || string_ends_with( path, ".png" );
 }
 
 unsigned int font_config::imgui_config() const
