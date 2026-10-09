@@ -62,7 +62,6 @@
 #include "monster.h"
 #include "mutation.h"
 #include "npc.h"
-#include "options.h"
 #include "output.h"
 #include "overmap_ui.h"
 #include "overmapbuffer.h"
@@ -2796,8 +2795,9 @@ bool Character::has_any_bionic() const
 int Character::get_used_bionics_slots( const bodypart_id &bp ) const
 {
     int used_slots = 0;
+    const bodypart_str_id slot_bp = bp->similar_bodypart.value_or( bp->id );
     for( const bionic_id &bid : get_bionics() ) {
-        auto search = bid->occupied_bodyparts.find( bp.id() );
+        auto search = bid->occupied_bodyparts.find( slot_bp );
         if( search != bid->occupied_bodyparts.end() ) {
             used_slots += search->second;
         }
@@ -2809,9 +2809,6 @@ int Character::get_used_bionics_slots( const bodypart_id &bp ) const
 std::map<bodypart_id, int> Character::bionic_installation_issues( const bionic_id &bioid ) const
 {
     std::map<bodypart_id, int> issues;
-    if( !get_option < bool >( "CBM_SLOTS_ENABLED" ) ) {
-        return issues;
-    }
     for( const std::pair<const string_id<body_part_type>, size_t> &elem : bioid->occupied_bodyparts ) {
         const int lacked_slots = elem.second - get_free_bionics_slots( elem.first );
         if( lacked_slots > 0 ) {
@@ -2828,7 +2825,13 @@ int Character::get_total_bionics_slots( const bodypart_id &bp ) const
     for( const trait_id &mut : get_functioning_mutations() ) {
         mut_bio_slots += mut->bionic_slot_bonus( id );
     }
-    return bp->bionic_slots() + mut_bio_slots;
+    int similar_bio_slots = 0;
+    for( const bodypart_str_id &similar : id->get_all_combined_similar_bodyparts() ) {
+        if( similar->similar_bodypart == id && has_part( similar.id() ) ) {
+            similar_bio_slots += similar->bionic_slots();
+        }
+    }
+    return bp->bionic_slots() + mut_bio_slots + similar_bio_slots;
 }
 
 int Character::get_free_bionics_slots( const bodypart_id &bp ) const
