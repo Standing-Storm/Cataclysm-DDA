@@ -219,8 +219,9 @@ void bionic::initialize_pseudo_items( bool create_weapon )
             item pseudo( id );
             if( !pseudo.has_flag( flag_INTEGRATED ) ) {
                 pseudo.set_flag( flag_PSEUDO );
+                // integrated items already get worn in add_bionic, we don't need another copy
+                passive_pseudo_items.emplace_back( pseudo );
             }
-            passive_pseudo_items.emplace_back( pseudo );
         }
     }
 
