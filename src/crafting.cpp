@@ -1494,11 +1494,13 @@ static std::vector<provider_candidate> enumerate_admitted_providers(
     }
 
     if( src.present_char != nullptr ) {
-        for( const item_location &carried : src.present_char->all_items_loc() ) {
-            if( carried && carried.parent_item() == item_location::nowhere ) {
+        src.present_char->visit_carried( [&admit_tree]( const item_location & carried ) {
+            if( carried && !carried.has_parent() ) {
                 admit_tree( carried, true );
             }
-        }
+            // only worn, wielded
+            return VisitResponse::SKIP;
+        } );
     }
 
     // Vehicle cargo enters outside the accessibility block, mirroring form_inventory.
