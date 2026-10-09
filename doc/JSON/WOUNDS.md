@@ -21,8 +21,8 @@ Wound is a type, that affects specific bodyparts. It's similar in this to effect
     "limb_scores": [ { "score": "lift", "value": 0.25 } ], // if wounded part has this limb score, it will be decreased by this amount
     "whitelist_body_part_types": [ "leg", "arm" ], // if used, this wound can be applied only at bodyparts of this type. Possible values are: head, torso, sensor, mouth, arm, hand, leg, foot, wing, tail, other
     "blacklist_body_part_types": [ "torso", "sensor" ], // if used, this wound cannot be applied on bodyparts of this type.
-    "whitelist_bp_with_flag": "LIMB_UPPER", // only body parts with this flag can receive the wound.
-    "blacklist_bp_with_flag": "BIONIC_LIMB", // Bodyparts with this flag cannot receive this wound.
+    "whitelist_bp_with_flag": [ "LIMB_UPPER" ], // only body parts with this flags can receive the wound.
+    "blacklist_bp_with_flag": [ "BIONIC_LIMB" ], // Bodyparts with this flags cannot receive this wound.
   }
 ```
 
