@@ -205,10 +205,13 @@ void font_loader::save( const cata_path &path ) const
 void font_loader::load()
 {
     const cata_path fontdata = PATH_INFO::fontdata();
-    const cata_path legacy_fontdata = PATH_INFO::legacy_fontdata();
-    load_throws( legacy_fontdata );
-    assure_dir_exist( PATH_INFO::config_dir() );
-    save( fontdata );
+    if( file_exist( fontdata ) ) {
+        load_throws( fontdata );
+    } else {
+        load_throws( PATH_INFO::legacy_fontdata() );
+        assure_dir_exist( PATH_INFO::config_dir() );
+        save( fontdata );
+    }
 }
 
 #endif // TILES
