@@ -1128,21 +1128,22 @@ void npc::starting_inv_passtime()
     //if no weapon on person, give one based on best weapon skill
     npc_class_id found_weapon_quality = found_good_item( days_since_cata );
     bool found_great_weapon = found_weapon_quality == NC_NONE_HARDENED;
-    std::vector<item_location> items = all_items_loc();
     bool has_ranged_weapon = false;
     bool has_melee_weapon = false;
-    for( const item_location &i : items ) {
-        if( i->is_melee() && !i->is_armor() ) {
+    visit_items( [&found_great_weapon, &has_ranged_weapon,
+                         &has_melee_weapon]( const item_location & loc ) {
+        if( loc->is_melee() && !loc->is_armor() ) {
             //if a great weapon was selected, poor weapons don't count
-            if( !found_great_weapon || i->base_damage_melee().total_damage() >= MELEE_STAT * 2 ) {
+            if( !found_great_weapon || loc->base_damage_melee().total_damage() >= MELEE_STAT * 2 ) {
                 has_melee_weapon = true;
             }
-            break;
-        } else if( i->is_gun() ) {
+            return VisitResponse::ABORT;
+        } else if( loc->is_gun() ) {
             has_ranged_weapon = true;
-            break;
+            return VisitResponse::ABORT;
         }
-    }
+        return VisitResponse::NEXT;
+    } );
     if( !has_melee_weapon && !has_ranged_weapon ) {
         starting_weapon( found_weapon_quality );
         //additional ammo guaranteed if given a weapon
