@@ -67,8 +67,8 @@ class wound_type
         int weight;
 
         // this wound can or cannot be applied to this bodyparts
-        json_character_flag whitelist_bp_with_flag;
-        json_character_flag blacklist_bp_with_flag;
+        std::vector<json_character_flag> whitelist_bp_with_flag;
+        std::vector<json_character_flag> blacklist_bp_with_flag;
 
         std::vector<bp_type> whitelist_body_part_types;
         std::vector<bp_type> blacklist_body_part_types;

@@ -270,9 +270,10 @@ bool wound_type::allowed_on_bodypart( bodypart_str_id bp_id ) const
     }
 
     // has no flag we want
-    if( !bp_id->has_flag( whitelist_bp_with_flag ) &&
-        !whitelist_bp_with_flag.is_empty() ) {
-        return false;
+    for( const json_character_flag &bp_flag : whitelist_bp_with_flag ) {
+        if( !bp_id->has_flag( bp_flag ) ) {
+            return false;
+        }
     }
 
     // has type we do not want
@@ -283,8 +284,10 @@ bool wound_type::allowed_on_bodypart( bodypart_str_id bp_id ) const
     }
 
     // has flag we do not want
-    if( bp_id->has_flag( blacklist_bp_with_flag ) ) {
-        return false;
+    for( const json_character_flag &bp_flag : blacklist_bp_with_flag ) {
+        if( bp_id->has_flag( bp_flag ) ) {
+            return false;
+        }
     }
 
     return true;
