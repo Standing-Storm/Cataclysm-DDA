@@ -127,14 +127,15 @@ static bool check_water_affect_items( avatar &you )
 
     if( !you.has_flag( json_flag_ITEM_WATERPROOFING ) ) {
         you.visit_items( [&dissolved, &destroyed, &wet]( const item_location & loc ) {
-            if( loc->has_flag( flag_WATER_DISSOLVE ) && !loc.protected_from_liquids() ) {
+            if( loc->has_flag( flag_WATER_DISSOLVE ) ) {
                 dissolved.emplace_back( loc );
-            } else if( loc->has_flag( flag_WATER_BREAK ) && !loc->is_broken()
-                       && !loc.protected_from_liquids() ) {
+            } else if( loc->has_flag( flag_WATER_BREAK ) && !loc->is_broken() ) {
                 destroyed.emplace_back( loc );
-            } else if( loc->has_flag( flag_WATER_BREAK_ACTIVE ) && !loc->is_broken()
-                       && !loc.protected_from_liquids() ) {
+            } else if( loc->has_flag( flag_WATER_BREAK_ACTIVE ) && !loc->is_broken() ) {
                 wet.emplace_back( loc );
+            }
+            if( loc->is_watertight_container() && !loc->will_spill() ) {
+                return VisitResponse::SKIP;
             }
             return VisitResponse::NEXT;
         } );
