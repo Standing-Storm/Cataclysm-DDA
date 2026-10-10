@@ -63,6 +63,7 @@
 #include "units_utility.h"
 #include "vehicle.h"
 #include "vehicle_selector.h"
+#include "visitable.h"
 #include "vpart_position.h"
 #include "vpart_range.h"
 
@@ -2213,9 +2214,13 @@ void inventory_selector::add_character_items( Character &character, bool add_efi
 
 void inventory_selector::add_character_ebooks( Character &character )
 {
-    for( item_location &ereader : character.all_items_loc() ) {
-        add_contained_ebooks( ereader );
-    }
+    character.visit_items( [&]( item_location ereader ) {
+        if( add_contained_ebooks( ereader ) ) {
+            return VisitResponse::SKIP;
+        } else {
+            return VisitResponse::NEXT;
+        }
+    } );
 }
 
 void inventory_selector::add_map_items( const tripoint_bub_ms &target, bool add_efiles )
