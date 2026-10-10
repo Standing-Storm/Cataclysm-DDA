@@ -1261,7 +1261,12 @@ static bool eat( item &food, Character &you, bool force )
     // the inventory and the surrounding map.
     if( !seasonings_set.empty() ) {
         auto legal_to_consume = [&]( const item & it ) {
-            return it.is_owned_by( you ) && ( seasonings_set.find( it.typeId() ) != seasonings_set.end() );
+            // For performance reasons this has been ordered so that the cheapest checks run first, to discount as many inappropriate items as early as possible.
+            // Character::will_eat() is extra expensive, so it goes last.
+            return it.is_owned_by( you ) &&
+                   !it.rotten() &&
+                   ( seasonings_set.find( it.typeId() ) != seasonings_set.end() ) &&
+                   you.will_eat( it ).success();
         };
 
         auto fun_value = [&]( const item_location & it ) {
