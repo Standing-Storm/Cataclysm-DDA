@@ -47,6 +47,7 @@
 #include "uilist.h"
 #include "value_ptr.h"
 #include "veh_appliance.h"
+#include "visitable.h"
 
 static const activity_id ACT_MORTAR_AIMING( "ACT_MORTAR_AIMING" );
 
