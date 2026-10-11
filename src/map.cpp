@@ -5699,12 +5699,12 @@ std::unordered_set<item_location> map::all_items( const std::function<bool( cons
 
 
     if( flags & Access_Inventory )  {
-        for( item_location &it : who.all_items_loc() ) {
+        who.visit_items( [&filter, &ret]( const item_location & it ) {
             if( filter( *it ) ) {
-                // NOTE: No need to recursively check here, all_items_loc() already did that.
                 ret.emplace( it );
             }
-        }
+            return VisitResponse::NEXT;
+        } );
     }
 
 

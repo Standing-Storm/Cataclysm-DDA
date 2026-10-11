@@ -482,11 +482,12 @@ void iexamine::genemill( Character &you, const tripoint_bub_ms & )
     std::vector<trait_id>available_traits;
     std::vector<item_location> genetech;
 
-    for( item_location &loc : you.all_items_loc() ) {
+    you.visit_items( [&genetech]( const item_location & loc ) {
         if( loc->has_flag( flag_GENE_TECH ) ) {
             genetech.push_back( loc );
         }
-    }
+        return VisitResponse::NEXT;
+    } );
 
 
     if( genetech.empty() ) {

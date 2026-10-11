@@ -767,10 +767,10 @@ book_proficiency_bonuses Character::book_bonuses_nearby( int radius ) const
     };
 
     // Character inventory (wielded, worn, carried -- includes e-readers)
-    for( const item_location &it :
-         const_cast<Character *>( this )->all_items_loc() ) {
+    visit_items( [&]( const item_location & it ) {
         collect( *it );
-    }
+        return VisitResponse::NEXT;
+    } );
 
     // Map items in range (shared reachability/accessibility/vehicle logic)
     get_map().for_each_reachable_item( pos_bub(), radius, this, collect );
@@ -1494,11 +1494,13 @@ static std::vector<provider_candidate> enumerate_admitted_providers(
     }
 
     if( src.present_char != nullptr ) {
-        for( const item_location &carried : src.present_char->all_items_loc() ) {
-            if( carried && carried.parent_item() == item_location::nowhere ) {
+        src.present_char->visit_carried( [&admit_tree]( const item_location & carried ) {
+            if( carried && !carried.has_parent() ) {
                 admit_tree( carried, true );
             }
-        }
+            // only worn, wielded
+            return VisitResponse::SKIP;
+        } );
     }
 
     // Vehicle cargo enters outside the accessibility block, mirroring form_inventory.
@@ -4492,20 +4494,28 @@ std::list<item> Character::consume_items( const std::vector<item_comp> &componen
 
 bool Character::consume_software_container( const itype_id &software_id )
 {
-    for( item_location it : all_items_loc() ) {
-        if( !it.get_item() ) {
-            continue;
+    bool consume = false;
+    item_location to_consume;
+    visit_items( [&software_id, &consume, &to_consume]( item_location it ) {
+        if( !it.valid() ) {
+            return VisitResponse::SKIP;
         }
-        if( it.get_item()->is_estorage() ) {
+        if( it->is_estorage() ) {
             for( const item *soft : it.get_item()->softwares() ) {
                 if( soft->typeId() == software_id ) {
-                    it.remove_item();
-                    return true;
+                    to_consume = it;
+                    consume = true;
+                    return VisitResponse::ABORT;
                 }
             }
+            return VisitResponse::SKIP;
         }
+        return VisitResponse::NEXT;
+    } );
+    if( consume ) {
+        remove_item( *to_consume );
     }
-    return false;
+    return consume;
 }
 
 comp_selection<tool_comp>
